@@ -62,8 +62,6 @@ public class _03_Uniprot {
 	    return hours + " hours " + minutes + " minutes " + seconds + " seconds";
 	}
 	
-	static String DB_PATH = "/biograph.db";
-	
 	public static void main(String[] args) throws IOException, XMLStreamException, JAXBException {
         disableInternalLogs();
 
@@ -80,7 +78,7 @@ public class _03_Uniprot {
     	System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
     	System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
 
-    	LoaderClient loader = new LoaderClient("biograph", Grakn.DEFAULT_URI);
+    	LoaderClient loader = new LoaderClient("biograkn", Grakn.DEFAULT_URI);
 
         System.out.print("\nReading proteins entries from " + fileName + " ");
 

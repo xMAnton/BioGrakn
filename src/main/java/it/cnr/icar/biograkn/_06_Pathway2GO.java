@@ -63,7 +63,7 @@ public class _06_Pathway2GO {
 	    BufferedReader reader = new BufferedReader(new FileReader(fileName));
         line = reader.readLine(); //skip header line
 
-        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograph").getGraph();
+        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograkn").getGraph();
         QueryBuilder qb = graph.graql();
         		                
         while ((line = reader.readLine()) != null) {

@@ -69,11 +69,8 @@ public class _01_NCBIGene {
     	System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
     	System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
 
-    	LoaderClient loader = new LoaderClient("biograph", Grakn.DEFAULT_URI);
+    	LoaderClient loader = new LoaderClient("biograkn", Grakn.DEFAULT_URI);
     	
-    	//GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograph").getGraphBatchLoading();
-        //QueryBuilder qb = graph.graql();
-       
         System.out.print("\nImporting NCBI gene info entries from " + fileName + " ");
 
         while ((line = reader.readLine()) != null) {

@@ -62,7 +62,7 @@ public class _12_SNP2Mature {
         // skip first line
         reader.readLine();
 
-        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograph").getGraph();
+        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograkn").getGraph();
         QueryBuilder qb = graph.graql();
         		                    	
         System.out.print("\nLinking SNPs to matures reading from " + fileName + " ");

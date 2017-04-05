@@ -63,7 +63,7 @@ public class _14_ProteinCoding {
         // skip first line
         reader.readLine();
 
-        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograph").getGraph();
+        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograkn").getGraph();
         QueryBuilder qb = graph.graql();
         		                    	
         System.out.print("\nImporting proteing coding to gene associations from " + fileName + " ");

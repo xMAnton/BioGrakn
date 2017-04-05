@@ -58,7 +58,7 @@ public class _04_Gene2GO {
 		int edgeCounter = 0;
         long startTime = System.currentTimeMillis();
 
-        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograph").getGraph();
+        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograkn").getGraph();
         QueryBuilder qb = graph.graql();
         		
 	    BufferedReader reader = new BufferedReader(new FileReader(fileName));

@@ -68,7 +68,7 @@ public class _11_miRNASNP {
     	System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
     	System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
 
-    	LoaderClient loader = new LoaderClient("biograph", Grakn.DEFAULT_URI);
+    	LoaderClient loader = new LoaderClient("biograkn", Grakn.DEFAULT_URI);
     	
         System.out.print("\nImporting SNPs in human miRNA seed region from " + fileName + " ");
 

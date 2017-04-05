@@ -64,7 +64,7 @@ public class _13_HGNC {
         // skip first line
         reader.readLine();
 
-        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograph").getGraph();
+        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograkn").getGraph();
         QueryBuilder qb = graph.graql();
         		                    	
         System.out.print("\nImporting genes names from " + fileName + " ");

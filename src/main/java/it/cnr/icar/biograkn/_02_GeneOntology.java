@@ -80,7 +80,7 @@ public class _02_GeneOntology {
     	System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
     	System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
 
-    	LoaderClient loader = new LoaderClient("biograph", Grakn.DEFAULT_URI);
+    	LoaderClient loader = new LoaderClient("biograkn", Grakn.DEFAULT_URI);
 
         XMLInputFactory xif = XMLInputFactory.newInstance();
         XMLStreamReader xsr = xif.createXMLStreamReader(new FileReader(fileName));

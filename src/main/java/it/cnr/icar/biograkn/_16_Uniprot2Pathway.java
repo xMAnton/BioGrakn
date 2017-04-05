@@ -57,7 +57,7 @@ public class _16_Uniprot2Pathway {
 		int entryCounter = 0;
         long startTime = System.currentTimeMillis();
 
-        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograph").getGraph();
+        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograkn").getGraph();
         QueryBuilder qb = graph.graql();
         		
 	    BufferedReader reader = new BufferedReader(new FileReader(fileName));
