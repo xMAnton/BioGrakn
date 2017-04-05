@@ -1,0 +1,262 @@
+insert
+
+#
+# Entities
+#
+
+gene sub entity
+	plays-role annotatedEntity
+	plays-role identified
+	plays-role encoder
+	plays-role interactingGene
+	plays-role contained
+	has-resource geneId
+    has-resource locusTag
+    has-resource chromosome
+    has-resource location
+    has-resource description
+    has-resource type
+    has-resource symbol
+    has-resource fullName
+    has-resource otherDesignations
+    has-resource nomenclatureStatus;
+
+go sub entity
+	plays-role functionalAnnotation
+	has-resource goId
+	has-resource name
+	has-resource namespace
+	has-resource definition
+	has-resource comment;
+
+protein sub entity
+	plays-role annotatedEntity
+	plays-role contained
+	plays-role identified
+	plays-role encoded
+	has-resource name
+	has-resource fullName
+	has-resource alternativeName
+	has-resource sequence
+	has-resource sequenceLength
+	has-resource sequenceMass
+	has-resource proteinGene
+	has-resource function
+	has-resource proteinPathway
+	has-resource subunit
+	has-resource tissue
+	has-resource ptm
+	has-resource similarity;
+
+pathway sub entity
+	plays-role annotatedEntity
+	plays-role container
+	has-resource pathwayId
+	has-resource name
+	has-resource disease
+	has-resource summation;
+
+mirna sub entity
+	plays-role precursor
+	plays-role upRegulator
+	plays-role downRegulator
+	plays-role contained
+	has-resource accession
+	has-resource name
+	has-resource description
+	has-resource comment
+	has-resource sequence;
+	
+mirnaMature sub mirna
+	plays-role mature
+	plays-role mutated
+	plays-role interactingMiRNA
+	plays-role mirnaWithSNP
+	has-resource product
+	has-resource location;
+
+mirnaSNP sub entity
+	plays-role snp
+	has-resource snpId
+	has-resource chr
+	has-resource mirStart
+	has-resource mirEnd
+	has-resource lostNum
+	has-resource gainNum;
+	
+cancer sub entity
+	plays-role upRegulated
+	plays-role downRegulated
+	plays-role byCancer
+	has-resource name;
+	
+proteinAccession sub entity
+	plays-role identifier
+	has-resource accession;
+
+geneName sub entity
+	plays-role identifier
+	has-resource name;
+
+interaction sub entity
+	plays-role interacting
+	has-resource database
+	has-resource experiments
+	has-resource supportType;
+	
+
+#
+# Relations
+#
+
+annotation sub relation
+	has-role functionalAnnotation
+	has-role annotatedEntity
+	has-resource evidence
+	has-resource qualifier
+	has-resource category;
+
+containing sub relation
+	has-role container
+	has-role contained;
+	
+precursorOf sub relation
+	has-role precursor
+	has-role mature;
+
+regulation sub relation is-abstract
+	has-role regulator
+	has-role regulated;
+
+upRegulation sub regulation
+	has-role upRegulator
+	has-role upRegulated;
+
+downRegulation sub regulation
+	has-role downRegulator
+	has-role downRegulated;
+
+snpMutation sub relation
+	has-role mutated
+	has-role snp;
+	
+entityReference sub relation
+	has-role identifier
+	has-role identified;
+
+encoding sub relation
+	has-role encoder
+	has-role encoded;
+
+interactionMiRNA sub relation
+	has-role interactingMiRNA
+	has-role interacting;
+
+interactionGene sub relation
+	has-role interacting
+	has-role interactingGene;
+	
+matureWithSNPsByCancer sub relation
+	has-role byCancer
+	has-role mirnaWithSNP;
+	
+	
+#
+# Roles
+#
+
+functionalAnnotation sub role;
+annotatedEntity sub role;
+container sub role;
+contained sub role;
+precursor sub role;
+mature sub role;
+mutated sub role;
+snp sub role;
+
+regulator sub role;
+regulated sub role;
+upRegulator sub regulator;
+upRegulated sub regulated;
+downRegulator sub regulator;
+downRegulated sub regulated;
+
+identifier sub role;
+identified sub role;
+
+encoder sub role;
+encoded sub role;
+
+interacting sub role;
+interactingMiRNA sub role;
+interactingGene sub role;
+
+byCancer sub role;
+mirnaWithSNP sub role;
+
+#
+# Resources
+#
+
+ID sub resource datatype string is-abstract;
+
+# common resources
+location sub resource datatype string;
+description sub resource datatype string;
+symbol sub resource datatype string;
+name sub ID;
+fullName sub name;
+comment sub resource datatype string;
+accession sub resource datatype string;
+
+# gene
+geneId sub ID;
+locusTag sub resource datatype string;
+chromosome sub resource datatype string;
+type sub resource datatype string;
+otherDesignations sub resource datatype string;
+nomenclatureStatus sub resource datatype string;
+
+# go
+goId sub ID;
+namespace sub resource datatype string;
+definition sub resource datatype string;
+
+# protein
+alternativeName sub name;
+proteinGene sub resource datatype string;
+function sub resource datatype string;
+proteinPathway sub resource datatype string;
+subunit sub resource datatype string;
+tissue sub resource datatype string;
+ptm sub resource datatype string;
+similarity sub resource datatype string;
+sequenceLength sub resource datatype long;
+sequenceMass sub resource datatype long;
+
+# pathway
+pathwayId sub ID;
+disease sub resource datatype string;
+summation sub resource datatype string;
+
+# annotation
+evidence sub resource datatype string;
+qualifier sub resource datatype string;
+category sub resource datatype string;
+
+# mirna
+product sub resource datatype string;
+sequence sub resource datatype string;
+
+# mirnaSNP
+snpId sub ID;
+chr sub resource datatype string;
+mirStart sub resource datatype long;
+mirEnd sub resource datatype long;
+lostNum sub resource datatype long;
+gainNum sub resource datatype long;
+
+# interaction
+database sub resource datatype string;
+experiments sub resource datatype string;
+supportType sub resource datatype string;
