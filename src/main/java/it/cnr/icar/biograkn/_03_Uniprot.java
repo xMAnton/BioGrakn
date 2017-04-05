@@ -77,8 +77,8 @@ public class _03_Uniprot {
         String fileName = homeDir + "/biodb/uniprot_sprot.xml";
 
         // for grakn 0.11.0
-    	System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf-0.11.0/grakn-engine.properties");
-    	System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf-0.11.0/logback.xml");
+    	System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
+    	System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
 
     	LoaderClient loader = new LoaderClient("biograph", Grakn.DEFAULT_URI);
 
