@@ -1,7 +1,8 @@
 *.class
 
-# Eclise project
+# Eclise project dirs
 .project
+.settings
 
 # Mobile Tools for Java (J2ME)
 .mtj.tmp/
