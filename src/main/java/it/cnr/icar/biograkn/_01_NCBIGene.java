@@ -23,16 +23,11 @@ import java.io.FileReader;
 import java.io.IOException;
 
 import ai.grakn.Grakn;
-import ai.grakn.client.LoaderClient;
-import ai.grakn.engine.util.ConfigProperties;
-import ai.grakn.graql.Graql;
-import ai.grakn.graql.Var;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
+import ai.grakn.exception.GraknException;
+import ai.grakn.graql.InsertQuery;
+import ai.grakn.client.BatchMutatorClient;
 
-import ai.grakn.exception.GraknValidationException;
-
-import static ai.grakn.graql.Graql.var;
+import static ai.grakn.graql.Graql.*;
 
 public class _01_NCBIGene {
 
@@ -50,7 +45,7 @@ public class _01_NCBIGene {
         return hours + " hours " + minutes + " minutes " + seconds + " seconds";
     }
 
-    public static void main(String[] args) throws IOException, GraknValidationException{
+    public static void main(String[] args) throws IOException, GraknException{
         disableInternalLogs();
 
         String homeDir = System.getProperty("user.home");
@@ -66,10 +61,10 @@ public class _01_NCBIGene {
         reader.readLine();
 
         // for grakn 0.11.0
-    	System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
-    	System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
+    	//System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
+    	//System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
 
-    	LoaderClient loader = new LoaderClient("biograkn", Grakn.DEFAULT_URI);
+    	BatchMutatorClient loader = new BatchMutatorClient("biograkn", Grakn.DEFAULT_URI);
     	
         System.out.print("\nImporting NCBI gene info entries from " + fileName + " ");
 
@@ -82,7 +77,7 @@ public class _01_NCBIGene {
 
             String symbol = datavalue[10].equals("-") ? datavalue[2] : datavalue[10];
 
-            Var gene =
+            InsertQuery gene = insert(
             		var("g")
             			.isa("gene")
             			.has("geneId", datavalue[1])
@@ -95,11 +90,11 @@ public class _01_NCBIGene {
             			.has("fullName", datavalue[11])
             			.has("nomenclatureStatus", datavalue[12])
             			.has("otherDesignations", datavalue[13])
-            			;
+            			);
 
             //graph.commit();
             
-            loader.add(Graql.insert(gene));
+            loader.add(gene);
             
             entryCounter++;
 
@@ -118,7 +113,7 @@ public class _01_NCBIGene {
     }
     
     public static void disableInternalLogs(){
-        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-        logger.setLevel(Level.INFO);
+    	org.apache.log4j.Logger logger4j = org.apache.log4j.Logger.getRootLogger();
+		logger4j.setLevel(org.apache.log4j.Level.toLevel("INFO"));
     }
 }

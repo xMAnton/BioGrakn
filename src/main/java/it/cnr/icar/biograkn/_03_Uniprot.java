@@ -18,11 +18,8 @@
 
 package it.cnr.icar.biograkn;
 
-import static ai.grakn.graql.Graql.var;
-
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -33,12 +30,11 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 import ai.grakn.Grakn;
-import ai.grakn.client.LoaderClient;
-import ai.grakn.engine.util.ConfigProperties;
-import ai.grakn.graql.Graql;
-import ai.grakn.graql.Var;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
+import ai.grakn.graql.InsertQuery;
+import ai.grakn.client.BatchMutatorClient;
+
+import static ai.grakn.graql.Graql.*;
+
 import it.cnr.icar.biograkn.uniprot.CommentType;
 import it.cnr.icar.biograkn.uniprot.Entry;
 import it.cnr.icar.biograkn.uniprot.GeneType;
@@ -75,10 +71,10 @@ public class _03_Uniprot {
         String fileName = homeDir + "/biodb/uniprot_sprot.xml";
 
         // for grakn 0.11.0
-    	System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
-    	System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
+    	//System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
+    	//System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
 
-    	LoaderClient loader = new LoaderClient("biograkn", Grakn.DEFAULT_URI);
+    	BatchMutatorClient loader = new BatchMutatorClient("biograkn", Grakn.DEFAULT_URI);
 
         System.out.print("\nReading proteins entries from " + fileName + " ");
 
@@ -96,7 +92,7 @@ public class _03_Uniprot {
             String organismTaxonomyId = ((organism != null) && (!organism.getDbReference().isEmpty())) ? organism.getDbReference().get(0).getId() : "";
             
             if (organismTaxonomyId.equals("9606")) {
-            	ArrayList<Var> vars = new ArrayList<Var>();
+            	//ArrayList<InsertQuery> vars = new ArrayList<InsertQuery>();
             	
             	if (entry.getAccession().isEmpty())
             		continue;
@@ -164,7 +160,8 @@ public class _03_Uniprot {
            		 	*/
             	}
 
-            	Var protein = var("p")
+            	InsertQuery protein = insert(
+            			var("p")
             			.isa("protein")
             			.has("name", name)
             			.has("fullName", fullName)
@@ -179,40 +176,40 @@ public class _03_Uniprot {
             			.has("sequence", sequence)
             			.has("sequenceLength", sequenceLength)
             			.has("sequenceMass", sequenceMass)
-            			;
+            			);
             	
                 entryCounter++;
                 resCounter += 13;
                 
-                vars.add(protein);
+                loader.add(protein);
 
                 int cnt = 1;
             	for (String accessionName : entry.getAccession()) {
-            		Var accession = var("acc" + cnt)
+            		InsertQuery accession = insert(
+            				var("acc" + cnt)
             				.isa("proteinAccession")
-            				.has("accession", accessionName);
+            				.has("accession", accessionName)
+            				);
             		
-            		vars.add(accession);
+            		loader.add(accession);
             		
             		entryCounter++;
             		resCounter++;
             		            		
-    				Var rel = 
+            		InsertQuery rel = insert(
     	        			var("rel" + cnt)
     						.isa("entityReference")
     						.rel("identifier", "acc" + cnt)
     						.rel("identified", "p")
-    						;
+    						);
 
-    				vars.add(rel);	
+    				loader.add(rel);	
     				
     				relCounter++;
 
     				cnt++;
             	}
             	
-                loader.add(Graql.insert(vars));
-
             	/*
             	for (ReferenceType refType: entry.getReference()) {
             		CitationType citation = refType.getCitation();
@@ -258,7 +255,7 @@ public class _03_Uniprot {
 	}
 	
     public static void disableInternalLogs(){
-        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-        logger.setLevel(Level.INFO);
+    	org.apache.log4j.Logger logger4j = org.apache.log4j.Logger.getRootLogger();
+		logger4j.setLevel(org.apache.log4j.Level.toLevel("INFO"));
     }
 }

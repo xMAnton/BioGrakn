@@ -18,8 +18,6 @@
 
 package it.cnr.icar.biograkn;
 
-import static ai.grakn.graql.Graql.var;
-
 import java.io.FileReader;
 import java.io.IOException;
 
@@ -32,10 +30,10 @@ import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
 import ai.grakn.Grakn;
-import ai.grakn.client.LoaderClient;
-import ai.grakn.engine.util.ConfigProperties;
-import ai.grakn.graql.Graql;
-import ai.grakn.graql.Var;
+import ai.grakn.graql.InsertQuery;
+import ai.grakn.client.BatchMutatorClient;
+
+import static ai.grakn.graql.Graql.*;
 import it.cnr.icar.biograkn.go.Header;
 import it.cnr.icar.biograkn.go.Source;
 import it.cnr.icar.biograkn.go.Term;
@@ -77,10 +75,11 @@ public class _02_GeneOntology {
     	*/
         
         // for grakn 0.11.0
-    	System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
-    	System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
+    	//System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
+    	//System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
 
-    	LoaderClient loader = new LoaderClient("biograkn", Grakn.DEFAULT_URI);
+    	//LoaderClient loader = new LoaderClient("biograkn", Grakn.DEFAULT_URI);
+    	BatchMutatorClient loader = new BatchMutatorClient("biograkn", Grakn.DEFAULT_URI);
 
         XMLInputFactory xif = XMLInputFactory.newInstance();
         XMLStreamReader xsr = xif.createXMLStreamReader(new FileReader(fileName));
@@ -112,15 +111,17 @@ public class _02_GeneOntology {
             	            	
                 entryCounter++;
                 
-                Var goTerm = var("t")
+                InsertQuery go = insert(
+                		var("t")
                 			.isa("go")
                 			.has("goId", goId)
                 			.has("name", goName)
                 			.has("definition", goDefinition)
                 			.has("comment", goComment)
-                			.has("namespace", goNamespace);
+                			.has("namespace", goNamespace)
+                		);
 
-                loader.add(Graql.insert(goTerm));
+                loader.add(go);
 	
                 /*
                 idVertexMap.put(goId, t);

@@ -25,13 +25,10 @@ import java.io.FileReader;
 import java.io.IOException;
 
 import ai.grakn.Grakn;
-import ai.grakn.client.LoaderClient;
-import ai.grakn.engine.util.ConfigProperties;
-import ai.grakn.exception.GraknValidationException;
-import ai.grakn.graql.Graql;
-import ai.grakn.graql.Var;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
+import ai.grakn.graql.InsertQuery;
+import ai.grakn.client.BatchMutatorClient;
+
+import static ai.grakn.graql.Graql.*;
 
 public class _11_miRNASNP {
 
@@ -49,7 +46,7 @@ public class _11_miRNASNP {
         return hours + " hours " + minutes + " minutes " + seconds + " seconds";
     }
 
-    public static void main(String[] args) throws IOException, GraknValidationException{
+    public static void main(String[] args) throws IOException {
         disableInternalLogs();
 
         String homeDir = System.getProperty("user.home");
@@ -65,10 +62,10 @@ public class _11_miRNASNP {
         reader.readLine();
 
         // for grakn 0.11.0
-    	System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
-    	System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
+    	//System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
+    	//System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
 
-    	LoaderClient loader = new LoaderClient("biograkn", Grakn.DEFAULT_URI);
+        BatchMutatorClient loader = new BatchMutatorClient("biograkn", Grakn.DEFAULT_URI);
     	
         System.out.print("\nImporting SNPs in human miRNA seed region from " + fileName + " ");
 
@@ -83,7 +80,7 @@ public class _11_miRNASNP {
         	int lostNum = Integer.valueOf(datavalue[5]);
         	int gainNum = Integer.valueOf(datavalue[6]);
 
-            Var snp =
+        	InsertQuery snp = insert(
             		var("s")
             			.isa("mirnaSNP")
             			.has("snpId", SNPid)
@@ -92,11 +89,11 @@ public class _11_miRNASNP {
             			.has("mirEnd", mirEnd)
             			.has("lostNum", lostNum)
             			.has("gainNum", gainNum)
-            			;
+            			);
 
             //graph.commit();
             
-            loader.add(Graql.insert(snp));
+            loader.add(snp);
             
             entryCounter++;
 
@@ -115,8 +112,8 @@ public class _11_miRNASNP {
     }
     
     public static void disableInternalLogs(){
-        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-        logger.setLevel(Level.INFO);
+    	org.apache.log4j.Logger logger4j = org.apache.log4j.Logger.getRootLogger();
+		logger4j.setLevel(org.apache.log4j.Level.toLevel("INFO"));
     }
 
 }

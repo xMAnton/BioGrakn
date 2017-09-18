@@ -25,13 +25,10 @@ import java.io.FileReader;
 import java.io.IOException;
 
 import ai.grakn.Grakn;
-import ai.grakn.client.LoaderClient;
-import ai.grakn.engine.util.ConfigProperties;
-import ai.grakn.exception.GraknValidationException;
-import ai.grakn.graql.Graql;
-import ai.grakn.graql.Var;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
+import ai.grakn.graql.InsertQuery;
+import ai.grakn.client.BatchMutatorClient;
+
+import static ai.grakn.graql.Graql.*;
 
 public class _08_miRCancer {
 
@@ -49,7 +46,7 @@ public class _08_miRCancer {
         return hours + " hours " + minutes + " minutes " + seconds + " seconds";
     }
 
-    public static void main(String[] args) throws IOException, GraknValidationException{
+    public static void main(String[] args) throws IOException {
         disableInternalLogs();
 
         String homeDir = System.getProperty("user.home");
@@ -67,22 +64,23 @@ public class _08_miRCancer {
         reader.readLine();
 
         // for grakn 0.11.0
-    	System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
-    	System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
+    	//System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
+    	//System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
 
-    	LoaderClient loader = new LoaderClient("biograkn", Grakn.DEFAULT_URI);
+        BatchMutatorClient loader = new BatchMutatorClient("biograkn", Grakn.DEFAULT_URI);
         
         System.out.print("\nImporting cancers from " + fileName + " ");
 
         while ((line = reader.readLine()) != null) {
             String datavalue[] = line.split("\t");
 
-            Var cancer = var("c")
+            InsertQuery cancer = insert(
+            			var("c")
             			.isa("cancer")
             			.has("name", datavalue[0])
-            			;
+            			);
 
-            loader.add(Graql.insert(cancer));
+            loader.add(cancer);
             
             entryCounter++;
 
@@ -101,8 +99,8 @@ public class _08_miRCancer {
     }
     
     public static void disableInternalLogs(){
-        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-        logger.setLevel(Level.OFF);
+    	org.apache.log4j.Logger logger4j = org.apache.log4j.Logger.getRootLogger();
+		logger4j.setLevel(org.apache.log4j.Level.toLevel("INFO"));
     }
     
 }
