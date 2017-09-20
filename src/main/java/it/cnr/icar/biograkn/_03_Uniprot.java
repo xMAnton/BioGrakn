@@ -142,22 +142,6 @@ public class _03_Uniprot {
             		} else if (comment.getType().equals("similarity")) {
             			similarity = s;
             		}
-            		/*
-            		else
-            		if (!comment.getIsoform().isEmpty()) {
-            			for (IsoformType isoform : comment.getIsoform()) {
-            				for (String isoId : isoform.getId()) {
-            					Node accession = graphDb.createNode( PROTEIN_NAME );
-            					accession.setProperty("name", isoId);
-
-            					accession.createRelationshipTo(protein, RelationTypes.REFERS_TO);
-
-                                entryCounter++;
-                                edgeCounter++;
-            				}
-            			}
-            		}
-           		 	*/
             	}
 
             	InsertQuery protein = insert(
@@ -183,6 +167,7 @@ public class _03_Uniprot {
                 
                 loader.add(protein);
 
+                /*
                 int cnt = 1;
             	for (String accessionName : entry.getAccession()) {
             		InsertQuery accession = insert(
@@ -209,37 +194,7 @@ public class _03_Uniprot {
 
     				cnt++;
             	}
-            	
-            	/*
-            	for (ReferenceType refType: entry.getReference()) {
-            		CitationType citation = refType.getCitation();
-            		if ((citation != null) && (citation.getType().equals("journal article"))) {
-            			
-            			if (citation.getTitle() != null)			
-                	        for (DbReferenceType dbref: citation.getDbReference()) {
-                	        	if (dbref.getType().equals("PubMed")) {
-                	        			String pubmedId = dbref.getId();
-                	        			
-                        				if (!pubmedId.equals("")) {
-                        	            	ResourceIterator<Node> it = graphDb.findNodes(PUBMED, "pubmedId", pubmedId);
-
-                        	            	Node cit = null;
-                        	            	if (it.hasNext())
-                        	            		cit = it.next();
-                        	            	else {
-                        	            		cit = graphDb.createNode( PUBMED );
-                        	            		cit.setProperty("pubmedId", pubmedId);
-                        	            		entryCounter++;
-                        	            	}
-                    	            		protein.createRelationshipTo(cit, RelationTypes.CITED_IN);
-                        	        		edgeCounter++;
-                        				}
-                	        	}
-                	        }                	        
-            		}
-            	}
             	*/
-
             	
                 if (entryCounter % 2000 == 0) {
                 	System.out.print("."); System.out.flush();
