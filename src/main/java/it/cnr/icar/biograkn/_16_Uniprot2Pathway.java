@@ -23,13 +23,19 @@ import static ai.grakn.graql.Graql.var;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Iterator;
 
 import ai.grakn.Grakn;
 import ai.grakn.GraknGraph;
-import ai.grakn.exception.GraknValidationException;
+import ai.grakn.GraknSession;
+import ai.grakn.GraknTxType;
+import ai.grakn.concept.Concept;
+import ai.grakn.concept.Entity;
+import ai.grakn.concept.RelationType;
+import ai.grakn.concept.Role;
+import ai.grakn.exception.InvalidGraphException;
+import ai.grakn.graql.MatchQuery;
 import ai.grakn.graql.QueryBuilder;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 
 public class _16_Uniprot2Pathway {
 
@@ -47,29 +53,72 @@ public class _16_Uniprot2Pathway {
 	    return hours + " hours " + minutes + " minutes " + seconds + " seconds";
 	}
 	
-	public static void main(String[] args) throws IOException, GraknValidationException {
+	public static void main(String[] args) throws IOException {
         disableInternalLogs();
 
         String homeDir = System.getProperty("user.home");
 		
 		String fileName = homeDir + "/biodb/reactome/uniprot2pathway.txt";
 		String line;
-		int entryCounter = 0;
+		int edgeCounter = 0;
         long startTime = System.currentTimeMillis();
 
-        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograkn").getGraph();
-        QueryBuilder qb = graph.graql();
+        GraknSession session = Grakn.session(Grakn.DEFAULT_URI, "biograkn");
         		
 	    BufferedReader reader = new BufferedReader(new FileReader(fileName));
 
         System.out.print("\nImporting protein to pathway associations from " + fileName + " ");
 
         while ((line = reader.readLine()) != null) {
-        	String datavalue[] = line.split("\t");
+            GraknGraph graph = session.open(GraknTxType.BATCH);
+            QueryBuilder qb = graph.graql();
+
+            String datavalue[] = line.split("\t");
 
         	String uniprotId = datavalue[0];
         	String pathwayId = datavalue[1];
-       	
+
+        	MatchQuery findPathway = qb.match(var("p").isa("pathway").has("pathwayId", pathwayId)).limit(1);        	
+        	Iterator<Concept> concepts = findPathway.get("p").iterator();
+
+        	if (concepts.hasNext()) {
+        		
+        		Entity pathway = concepts.next().asEntity();
+        		
+            	MatchQuery findProtein = qb.match(
+            			var("acc").isa("proteinAccession").has("accession", uniprotId),
+            			var().isa("entityReference").rel("identifier", "acc").rel("identified", "prot"),
+            			var("prot").isa("protein")
+            			).limit(1);        	
+            	concepts = findProtein.get("prot").iterator();
+
+            	if (concepts.hasNext()) {
+            		
+            		Entity protein = concepts.next().asEntity();
+            		
+            		RelationType containingType = graph.getRelationType("containing");
+            		Role container = graph.getRole("container");
+            		Role contained = graph.getRole("contained");
+
+            		containingType.addRelation()
+	    				.addRolePlayer(container, pathway)
+	    				.addRolePlayer(contained, protein);
+            	}
+        	}
+        	
+    		try {
+				graph.commit();
+				edgeCounter++;
+
+				if (edgeCounter % 10000 == 0) {
+                	System.out.print("."); System.out.flush();
+                }
+			} catch (InvalidGraphException e) {
+				graph.abort();
+				edgeCounter--;
+			}
+    		
+        	/*
 			qb.match(
 				var("path").isa("pathway").has("pathwayId", pathwayId),
 				var("acc").isa("proteinAccession").has("accession", uniprotId),
@@ -88,23 +137,17 @@ public class _16_Uniprot2Pathway {
 				graph.rollback();
 				entryCounter--;
 			}
-    		
-            if (entryCounter % 10000 == 0) {
-            	System.out.print("."); System.out.flush();
-            }
+			*/
         }
         
-        graph.close();
-        
         long stopTime = (System.currentTimeMillis()-startTime)/1000;
-        System.out.println("\n\nCreated " + entryCounter + " relations in " + timeConversion(stopTime));
+        System.out.println("\n\nCreated " + edgeCounter + " relations in " + timeConversion(stopTime));
         
         reader.close();
-
 	}
 	
     public static void disableInternalLogs(){
-        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-        logger.setLevel(Level.OFF);
+    	org.apache.log4j.Logger logger4j = org.apache.log4j.Logger.getRootLogger();
+		logger4j.setLevel(org.apache.log4j.Level.toLevel("INFO"));
     }
 }

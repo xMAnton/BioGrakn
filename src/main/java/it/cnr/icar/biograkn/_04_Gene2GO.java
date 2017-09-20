@@ -21,13 +21,18 @@ package it.cnr.icar.biograkn;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Iterator;
 
 import ai.grakn.Grakn;
 import ai.grakn.GraknGraph;
-import ai.grakn.exception.GraknValidationException;
+import ai.grakn.GraknSession;
+import ai.grakn.GraknTxType;
+import ai.grakn.concept.Concept;
+import ai.grakn.concept.Entity;
+import ai.grakn.concept.RelationType;
+import ai.grakn.concept.Role;
+import ai.grakn.graql.MatchQuery;
 import ai.grakn.graql.QueryBuilder;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 
 import static ai.grakn.graql.Graql.*;
 
@@ -47,7 +52,7 @@ public class _04_Gene2GO {
 	    return hours + " hours " + minutes + " minutes " + seconds + " seconds";
 	}
 	
-	public static void main(String[] args) throws IOException, GraknValidationException {
+	public static void main(String[] args) throws IOException {
         disableInternalLogs();
 
         String homeDir = System.getProperty("user.home");
@@ -58,19 +63,54 @@ public class _04_Gene2GO {
 		int edgeCounter = 0;
         long startTime = System.currentTimeMillis();
 
-        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograkn").getGraph();
-        QueryBuilder qb = graph.graql();
-        		
+        GraknSession session = Grakn.session(Grakn.DEFAULT_URI, "biograkn");
+        
 	    BufferedReader reader = new BufferedReader(new FileReader(fileName));
 
         System.out.print("\nImporting gene2go associations from " + fileName + " ");
                 
         while ((line = reader.readLine()) != null) {
+            GraknGraph graph = session.open(GraknTxType.BATCH);
+            QueryBuilder qb = graph.graql();
+            		
         	String datavalue[] = line.split(" ");
         	
         	String geneId = datavalue[0];
         	String goId = datavalue[1];
 
+        	MatchQuery findGene = qb.match(var("g1").isa("gene").has("geneId", geneId)).limit(1);        	
+        	Iterator<Concept> concepts = findGene.get("g1").iterator();
+        	
+        	if (concepts.hasNext()) {
+        		
+            	Entity gene = concepts.next().asEntity();
+            	
+            	MatchQuery findGo = qb.match(var("g2").isa("go").has("goId", goId)).limit(1);        	
+            	concepts = findGo.get("g2").iterator();
+            	
+            	if (concepts.hasNext()) {
+            		
+            		Entity go = concepts.next().asEntity();
+            		
+            		RelationType annotationType = graph.getRelationType("annotation");
+            		Role functionalAnnotation = graph.getRole("functionalAnnotation");
+            		Role annotatedEntity = graph.getRole("annotatedEntity");
+            		
+            		annotationType.addRelation()
+            				.addRolePlayer(functionalAnnotation, go)
+            				.addRolePlayer(annotatedEntity, gene);
+            		
+            		edgeCounter++;
+            		
+                    if (edgeCounter % 10000 == 0) {
+                    	System.out.print("."); System.out.flush();
+                    }
+            	}
+        	}
+        	
+        	graph.commit();
+
+        	/*
         	qb.match(
         			var("gene").isa("gene").has("geneId", geneId),
         			var("go").isa("go").has("goId", goId)
@@ -86,19 +126,19 @@ public class _04_Gene2GO {
             if (edgeCounter % 10000 == 0) {
             	System.out.print("."); System.out.flush();
             }
+            */
         }
         
-        graph.commit();
+        //graph.commit();
         
         long stopTime = (System.currentTimeMillis()-startTime)/1000;
         System.out.println("\n\nCreated " + edgeCounter + " relations in " + timeConversion(stopTime));
         
         reader.close();
-
 	}
 	
     public static void disableInternalLogs(){
-        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-        logger.setLevel(Level.OFF);
+    	org.apache.log4j.Logger logger4j = org.apache.log4j.Logger.getRootLogger();
+		logger4j.setLevel(org.apache.log4j.Level.toLevel("INFO"));
     }
 }

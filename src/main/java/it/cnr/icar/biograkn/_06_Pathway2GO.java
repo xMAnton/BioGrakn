@@ -23,13 +23,18 @@ import static ai.grakn.graql.Graql.var;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Iterator;
 
 import ai.grakn.Grakn;
 import ai.grakn.GraknGraph;
-import ai.grakn.exception.GraknValidationException;
+import ai.grakn.GraknSession;
+import ai.grakn.GraknTxType;
+import ai.grakn.concept.Concept;
+import ai.grakn.concept.Entity;
+import ai.grakn.concept.RelationType;
+import ai.grakn.concept.Role;
+import ai.grakn.graql.MatchQuery;
 import ai.grakn.graql.QueryBuilder;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 
 public class _06_Pathway2GO {
 
@@ -47,7 +52,7 @@ public class _06_Pathway2GO {
 	    return hours + " hours " + minutes + " minutes " + seconds + " seconds";
 	}
 	
-	public static void main(String[] args) throws IOException, GraknValidationException {
+	public static void main(String[] args) throws IOException {
         disableInternalLogs();
 
         String homeDir = System.getProperty("user.home");
@@ -63,43 +68,58 @@ public class _06_Pathway2GO {
 	    BufferedReader reader = new BufferedReader(new FileReader(fileName));
         line = reader.readLine(); //skip header line
 
-        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograkn").getGraph();
-        QueryBuilder qb = graph.graql();
-        		                
+        GraknSession session = Grakn.session(Grakn.DEFAULT_URI, "biograkn");
+        
         while ((line = reader.readLine()) != null) {
+            GraknGraph graph = session.open(GraknTxType.BATCH);
+            QueryBuilder qb = graph.graql();
+            
         	String datavalue[] = line.split("\t");
         	
         	String pathwayId = datavalue[0];
         	String goId = datavalue[1];
 
-        	qb.match(
-        			var("p").isa("pathway").has("pathwayId", pathwayId),
-        			var("go").isa("go").has("goId", goId)
-        	).insert(
-    				var().isa("annotation")
-    				.rel("functionalAnnotation", "go")
-    				.rel("annotatedEntity", "p")
-    		).execute();
+        	MatchQuery findPathway = qb.match(var("p").isa("pathway").has("pathwayId", pathwayId)).limit(1);        	
+        	Iterator<Concept> concepts = findPathway.get("p").iterator();
 
-    		edgeCounter++;
-    		graph.commit();
-
-            if (edgeCounter % 10000 == 0) {
-            	System.out.print("."); System.out.flush();
-            }
+        	if (concepts.hasNext()) {
+        		
+        		Entity pathway = concepts.next().asEntity();
+        		
+            	MatchQuery findGo = qb.match(var("g").isa("go").has("goId", goId)).limit(1);        	
+            	concepts = findGo.get("g").iterator();
+            	
+            	if (concepts.hasNext()) {
+            		
+            		Entity go = concepts.next().asEntity();
+            		
+            		RelationType annotationType = graph.getRelationType("annotation");
+            		Role functionalAnnotation = graph.getRole("functionalAnnotation");
+            		Role annotatedEntity = graph.getRole("annotatedEntity");
+            		
+            		annotationType.addRelation()
+        				.addRolePlayer(functionalAnnotation, go)
+        				.addRolePlayer(annotatedEntity, pathway);
+            		
+            		edgeCounter++;
+            		
+                    if (edgeCounter % 10000 == 0) {
+                    	System.out.print("."); System.out.flush();
+                    }
+            	}
+        	}
+        	
+            graph.commit();
         }
-        
-        graph.close();
         
         long stopTime = (System.currentTimeMillis()-startTime)/1000;
         System.out.println("\n\nCreated " + edgeCounter + " relations in " + timeConversion(stopTime));
         
         reader.close();
-
 	}
 	
     public static void disableInternalLogs(){
-        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-        logger.setLevel(Level.OFF);
+    	org.apache.log4j.Logger logger4j = org.apache.log4j.Logger.getRootLogger();
+		logger4j.setLevel(org.apache.log4j.Level.toLevel("INFO"));
     }
 }
