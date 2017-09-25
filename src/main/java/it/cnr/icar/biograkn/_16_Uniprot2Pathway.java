@@ -103,12 +103,13 @@ public class _16_Uniprot2Pathway {
             		containingType.addRelation()
 	    				.addRolePlayer(container, pathway)
 	    				.addRolePlayer(contained, protein);
+            		
+    				edgeCounter++;
             	}
         	}
         	
     		try {
 				graph.commit();
-				edgeCounter++;
 
 				if (edgeCounter % 10000 == 0) {
                 	System.out.print("."); System.out.flush();

@@ -109,27 +109,9 @@ public class _04_Gene2GO {
         	}
         	
         	graph.commit();
-
-        	/*
-        	qb.match(
-        			var("gene").isa("gene").has("geneId", geneId),
-        			var("go").isa("go").has("goId", goId)
-        	).insert(
-    				var().isa("annotation")
-    				.rel("functionalAnnotation", "go")
-    				.rel("annotatedEntity", "gene")
-    		).execute();
-
-    		edgeCounter++;
-    		graph.commit();
-    		
-            if (edgeCounter % 10000 == 0) {
-            	System.out.print("."); System.out.flush();
-            }
-            */
         }
         
-        //graph.commit();
+        session.close();
         
         long stopTime = (System.currentTimeMillis()-startTime)/1000;
         System.out.println("\n\nCreated " + edgeCounter + " relations in " + timeConversion(stopTime));

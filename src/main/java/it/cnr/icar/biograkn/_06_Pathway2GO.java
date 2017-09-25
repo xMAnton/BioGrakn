@@ -111,7 +111,9 @@ public class _06_Pathway2GO {
         	
             graph.commit();
         }
-        
+
+        session.close();
+
         long stopTime = (System.currentTimeMillis()-startTime)/1000;
         System.out.println("\n\nCreated " + edgeCounter + " relations in " + timeConversion(stopTime));
         

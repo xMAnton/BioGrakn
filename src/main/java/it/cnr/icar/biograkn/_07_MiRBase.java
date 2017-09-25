@@ -18,12 +18,9 @@
 
 package it.cnr.icar.biograkn;
 
-import static ai.grakn.graql.Graql.var;
-
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -39,13 +36,10 @@ import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequenceIterator;
 
 import ai.grakn.Grakn;
-import ai.grakn.client.LoaderClient;
-import ai.grakn.engine.util.ConfigProperties;
-import ai.grakn.exception.GraknValidationException;
-import ai.grakn.graql.Graql;
-import ai.grakn.graql.Var;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
+import ai.grakn.client.BatchMutatorClient;
+import ai.grakn.graql.InsertQuery;
+
+import static ai.grakn.graql.Graql.*;
 
 public class _07_MiRBase {
 
@@ -63,7 +57,7 @@ public class _07_MiRBase {
         return hours + " hours " + minutes + " minutes " + seconds + " seconds";
     }
 
-    public static void main(String[] args) throws IOException, GraknValidationException, NoSuchElementException, BioException{
+    public static void main(String[] args) throws IOException, NoSuchElementException, BioException{
         disableInternalLogs();
 
         String homeDir = System.getProperty("user.home");
@@ -73,10 +67,11 @@ public class _07_MiRBase {
         long startTime = System.currentTimeMillis();
 
         // for grakn 0.11.0
-    	System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
-    	System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
+    	//System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
+    	//System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
 
-    	LoaderClient loader = new LoaderClient("biograkn", Grakn.DEFAULT_URI);
+    	//LoaderClient loader = new LoaderClient("biograkn", Grakn.DEFAULT_URI);
+    	BatchMutatorClient loader = new BatchMutatorClient("biograkn", Grakn.DEFAULT_URI);
 
         String fileName = homeDir + "/biodb/miRNA.dat";
         
@@ -87,7 +82,7 @@ public class _07_MiRBase {
 		RichSequenceIterator seqs = RichSequence.IOTools.readEMBLRNA(br, ns);
 
 		while (seqs.hasNext()) {
-			ArrayList<Var> vars = new ArrayList<Var>();
+			//ArrayList<Var> vars = new ArrayList<Var>();
 			
 			RichSequence entry = seqs.nextRichSequence();
 
@@ -106,7 +101,7 @@ public class _07_MiRBase {
 
 			String sequence = entry.getInternalSymbolList().seqString();
 			
-			Var mirna =
+			InsertQuery mirna = insert(
 					var("m")
 					.isa("mirna")
         			.has("accession", accession)
@@ -114,13 +109,13 @@ public class _07_MiRBase {
         			.has("description", description)
         			.has("comment", comment)
         			.has("sequence", sequence)
-        			;
+        			);
         	
             entryCounter++;
             resCounter += 5;
 			
-			vars.add(mirna);
-			
+            loader.add(mirna);
+            
 			Iterator<Feature> itf = entry.getFeatureSet().iterator();
 			
 			int cnt = 1;
@@ -146,20 +141,21 @@ public class _07_MiRBase {
 						matProduct = value;
 				}
 
-				Var mature = 
+				InsertQuery mature = insert(
 						var("mat" + cnt)
 	        			.isa("mirnaMature")
 	        			.has("accession", matAccession)
 	        			.has("product", matProduct)
 	        			.has("sequence", subSequence)
 	        			.has("location", location)
-	        			;
+	        			);
 				
 				entryCounter++;
 				resCounter += 4;
 
-				vars.add(mature);
-				
+				loader.add(mature);
+
+				/*
 				Var rel = 
 	        			var("rel" + cnt)
 						.isa("precursorOf")
@@ -170,11 +166,10 @@ public class _07_MiRBase {
 				cnt++;
 				relCounter++;
 
-				vars.add(rel);				
+				vars.add(rel);
+				*/			
 			}
 
-			loader.add(Graql.insert(vars));
-			
             if (entryCounter % 1000 == 0) {
             	System.out.print("."); System.out.flush();
             }
@@ -190,8 +185,8 @@ public class _07_MiRBase {
     }
     
     public static void disableInternalLogs(){
-        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-        logger.setLevel(Level.OFF);
+    	org.apache.log4j.Logger logger4j = org.apache.log4j.Logger.getRootLogger();
+		logger4j.setLevel(org.apache.log4j.Level.toLevel("INFO"));
     }
     
 }

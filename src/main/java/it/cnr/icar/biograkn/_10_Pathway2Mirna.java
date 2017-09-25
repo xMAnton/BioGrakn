@@ -23,13 +23,18 @@ import static ai.grakn.graql.Graql.var;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Iterator;
 
 import ai.grakn.Grakn;
 import ai.grakn.GraknGraph;
-import ai.grakn.exception.GraknValidationException;
+import ai.grakn.GraknSession;
+import ai.grakn.GraknTxType;
+import ai.grakn.concept.Concept;
+import ai.grakn.concept.Entity;
+import ai.grakn.concept.RelationType;
+import ai.grakn.concept.Role;
+import ai.grakn.graql.MatchQuery;
 import ai.grakn.graql.QueryBuilder;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 
 public class _10_Pathway2Mirna {
 
@@ -47,13 +52,13 @@ public class _10_Pathway2Mirna {
 	    return hours + " hours " + minutes + " minutes " + seconds + " seconds";
 	}
 	
-	public static void main(String[] args) throws IOException, GraknValidationException {
+	public static void main(String[] args) throws IOException {
         disableInternalLogs();
 
         String homeDir = System.getProperty("user.home");
 		
 		String line;
-		int edgeCounter = 0;
+		int relCounter = 0;
         long startTime = System.currentTimeMillis();
 
 		String fileName = homeDir + "/biodb/reactome/miRBase2Reactome_All_Levels.txt";
@@ -62,11 +67,13 @@ public class _10_Pathway2Mirna {
 
 	    BufferedReader reader = new BufferedReader(new FileReader(fileName));
 
-        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograkn").getGraph();
-        QueryBuilder qb = graph.graql();
+        GraknSession session = Grakn.session(Grakn.DEFAULT_URI, "biograkn");
         		                
         while ((line = reader.readLine()) != null) {
-        	String datavalue[] = line.split("\t");
+            GraknGraph graph = session.open(GraknTxType.BATCH);
+            QueryBuilder qb = graph.graql();
+
+            String datavalue[] = line.split("\t");
         	
         	String accessionId = datavalue[0];
         	String pathwayId = datavalue[1];
@@ -74,34 +81,53 @@ public class _10_Pathway2Mirna {
         	if (accessionId.startsWith("miR"))
         		accessionId = "MI" + accessionId.substring(3);
 
-        	qb.match(
-        			var("p").isa("pathway").has("pathwayId", pathwayId),
-        			var("m").isa("mirna").has("accession", accessionId)
-        	).insert(
-    				var().isa("containing")
-    				.rel("container", "p")
-    				.rel("contained", "m")
-    		).execute();
+        	MatchQuery findPathway = qb.match(var("p").isa("pathway").has("pathwayId", pathwayId)).limit(1);        	
+        	Iterator<Concept> concepts = findPathway.get("p").iterator();
 
-    		edgeCounter++;
-    		graph.commit();
+        	if (concepts.hasNext()) {
+        		
+        		Entity pathway = concepts.next().asEntity();
+        		
+            	MatchQuery findMirna = qb.match(var("m").isa("mirna").has("accession", accessionId)).limit(1);        	
+            	concepts = findMirna.get("m").iterator();
 
-            if (edgeCounter % 100 == 0) {
-            	System.out.print("."); System.out.flush();
-            }
+            	if (concepts.hasNext()) {
+            		
+            		Entity mirna = concepts.next().asEntity();
+            		
+            		RelationType containingType = graph.getRelationType("containing");
+            		Role container = graph.getRole("container");
+            		Role contained = graph.getRole("contained");
+
+            		containingType.addRelation()
+	    				.addRolePlayer(container, pathway)
+	    				.addRolePlayer(contained, mirna);
+            		
+    				relCounter++;
+
+    				graph.commit();
+
+    	            if (relCounter % 100 == 0) {
+    	            	System.out.print("."); System.out.flush();
+    	            }
+
+            	} else
+            		graph.close();
+        	} else
+        		graph.close();        	
         }
         
-        graph.close();
+        session.close();
         
         long stopTime = (System.currentTimeMillis()-startTime)/1000;
-        System.out.println("\n\nCreated " + edgeCounter + " relations in " + timeConversion(stopTime));
+        System.out.println("\n\nCreated " + relCounter + " relations in " + timeConversion(stopTime));
         
         reader.close();
 
 	}
 	
     public static void disableInternalLogs(){
-        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-        logger.setLevel(Level.OFF);
+    	org.apache.log4j.Logger logger4j = org.apache.log4j.Logger.getRootLogger();
+		logger4j.setLevel(org.apache.log4j.Level.toLevel("INFO"));
     }
 }

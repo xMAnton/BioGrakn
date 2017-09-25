@@ -21,13 +21,19 @@ package it.cnr.icar.biograkn;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Iterator;
 
 import ai.grakn.Grakn;
 import ai.grakn.GraknGraph;
-import ai.grakn.exception.GraknValidationException;
+import ai.grakn.GraknSession;
+import ai.grakn.GraknTxType;
+import ai.grakn.concept.Concept;
+import ai.grakn.concept.Entity;
+import ai.grakn.concept.RelationType;
+import ai.grakn.concept.Role;
+import ai.grakn.exception.InvalidGraphException;
+import ai.grakn.graql.MatchQuery;
 import ai.grakn.graql.QueryBuilder;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 
 import static ai.grakn.graql.Graql.*;
 
@@ -47,7 +53,7 @@ public class _09_Cancer2Mirna {
 	    return hours + " hours " + minutes + " minutes " + seconds + " seconds";
 	}
 	
-	public static void main(String[] args) throws IOException, GraknValidationException {
+	public static void main(String[] args) throws IOException {
         disableInternalLogs();
 
         String homeDir = System.getProperty("user.home");
@@ -55,18 +61,20 @@ public class _09_Cancer2Mirna {
         // cat miRCancerSeptember2015.txt | awk -F '\t' '{ print $1 "\t" $2 "\t" $3; }' | sort | uniq > cancer2mirna.txt
         String fileName = homeDir + "/biodb/cancer2mirna.txt";
 		String line;
-		int edgeCounter = 0;
+		int relCounter = 0;
         long startTime = System.currentTimeMillis();
 
-        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograkn").getGraph();
-        QueryBuilder qb = graph.graql();
+    	GraknSession session = Grakn.session(Grakn.DEFAULT_URI, "biograkn");
         		
 	    BufferedReader reader = new BufferedReader(new FileReader(fileName));
 
         System.out.print("\nImporting cancer2mirna associations from " + fileName + " ");
                 
         while ((line = reader.readLine()) != null) {
-        	String datavalue[] = line.split("\t");
+            GraknGraph graph = session.open(GraknTxType.BATCH);
+            QueryBuilder qb = graph.graql();
+
+            String datavalue[] = line.split("\t");
         	
         	String mirId = datavalue[0];
         	String cancerName = datavalue[1];
@@ -76,39 +84,58 @@ public class _09_Cancer2Mirna {
         	String regulator  = cancerProfile + "Regulator";
         	String regulated  = cancerProfile + "Regulated";
 
-        	qb.match(
-        			var("m").isa("mirna").has("name", mirId),
-        			var("c").isa("cancer").has("name", cancerName)
-        	).insert(
-    				var().isa(regulation)
-    				.rel(regulator, "m")
-    				.rel(regulated, "c")
-    		).execute();
+        	MatchQuery findMirna = qb.match(var("m").isa("mirna").has("name", mirId)).limit(1);        	
+        	Iterator<Concept> concepts = findMirna.get("m").iterator();
+        	
+        	if (concepts.hasNext()) {
+        		
+        		Entity mirna = concepts.next().asEntity();
+        		
+            	MatchQuery findCancer = qb.match(var("c").isa("cancer").has("name", cancerName)).limit(1);        	
+            	concepts = findCancer.get("c").iterator();
 
-    		try {
-				graph.commit();
-	    		edgeCounter++;
-			} catch (GraknValidationException e) {
-				graph.rollback();
-				edgeCounter--;
-			}
+            	if (concepts.hasNext()) {
+            		
+            		Entity cancer = concepts.next().asEntity();
+            		
+            		RelationType regulationType = graph.getRelationType(regulation);
+            		Role regulatorRole = graph.getRole(regulator);
+            		Role regulatedRole = graph.getRole(regulated);
 
-            if (edgeCounter % 200 == 0) {
-            	System.out.print("."); System.out.flush();
-            }
+            		regulationType.addRelation()
+        				.addRolePlayer(regulatorRole, mirna)
+        				.addRolePlayer(regulatedRole, cancer);
+
+            		relCounter++;
+
+            		try {
+        				graph.commit();
+
+        				if (relCounter % 200 == 0) {
+                        	System.out.print("."); System.out.flush();
+                        }
+        			} catch (InvalidGraphException e) {
+        				graph.abort();
+        				relCounter--;
+        			}                           	
+
+            	} else
+            		graph.close();
+        	} else
+        		graph.close();
+
         }
         
-        graph.close();
+        session.close();
         
         long stopTime = (System.currentTimeMillis()-startTime)/1000;
-        System.out.println("\n\nCreated " + edgeCounter + " relations in " + timeConversion(stopTime));
+        System.out.println("\n\nCreated " + relCounter + " relations in " + timeConversion(stopTime));
         
         reader.close();
-
 	}
 	
     public static void disableInternalLogs(){
-        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-        logger.setLevel(Level.OFF);
+    	org.apache.log4j.Logger logger4j = org.apache.log4j.Logger.getRootLogger();
+		logger4j.setLevel(org.apache.log4j.Level.toLevel("INFO"));
     }
 }

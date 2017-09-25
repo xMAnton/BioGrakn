@@ -49,7 +49,7 @@ import static ai.grakn.graql.Graql.*;
 import it.cnr.icar.biograkn.uniprot.Entry;
 import it.cnr.icar.biograkn.uniprot.OrganismType;
 
-public class _03_UniprotAccessions {
+public class _03a_UniprotAccessions {
 
 	private static String timeConversion(long seconds) {
 
@@ -84,7 +84,7 @@ public class _03_UniprotAccessions {
     	//BatchMutatorClient loader = new BatchMutatorClient("biograkn", Grakn.DEFAULT_URI);
         GraknSession session = Grakn.session(Grakn.DEFAULT_URI, "biograkn");
 
-        System.out.print("\nReading proteins entries from " + fileName + " ");
+        System.out.print("\nReading proteins accessions from " + fileName + " ");
 
         XMLInputFactory xif = XMLInputFactory.newInstance();
         XMLStreamReader xsr = xif.createXMLStreamReader(new FileReader(fileName));
@@ -149,6 +149,8 @@ public class _03_UniprotAccessions {
             	graph.commit();
         	}
         }
+
+        session.close();
 
         long stopTime = (System.currentTimeMillis()-startTime)/1000;
         System.out.println("\n\nCreated " + entryCounter + " entities, " + resCounter + " resources and " + relCounter + " relations in " + timeConversion(stopTime));

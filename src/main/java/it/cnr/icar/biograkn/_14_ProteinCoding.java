@@ -23,14 +23,19 @@ import static ai.grakn.graql.Graql.var;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Iterator;
 
 import ai.grakn.Grakn;
 import ai.grakn.GraknGraph;
-import ai.grakn.exception.GraknValidationException;
+import ai.grakn.GraknSession;
+import ai.grakn.GraknTxType;
+import ai.grakn.concept.Concept;
+import ai.grakn.concept.Entity;
+import ai.grakn.concept.RelationType;
+import ai.grakn.concept.Role;
+import ai.grakn.exception.InvalidGraphException;
+import ai.grakn.graql.MatchQuery;
 import ai.grakn.graql.QueryBuilder;
-import ai.grakn.graql.Var;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 
 public class _14_ProteinCoding {
 
@@ -48,14 +53,13 @@ public class _14_ProteinCoding {
         return hours + " hours " + minutes + " minutes " + seconds + " seconds";
     }
 
-    public static void main(String[] args) throws IOException, GraknValidationException{
+    public static void main(String[] args) throws IOException {
         disableInternalLogs();
 
         String homeDir = System.getProperty("user.home");
 		String fileName = homeDir + "/biodb/protein-coding_gene.txt";
         String line;
-        int entryCounter = 0;
-        //int edgeCounter = 0;
+        int edgeCounter = 0;
         long startTime = System.currentTimeMillis();
 
         BufferedReader reader = new BufferedReader(new FileReader(fileName));
@@ -63,9 +67,8 @@ public class _14_ProteinCoding {
         // skip first line
         reader.readLine();
 
-        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograkn").getGraph();
-        QueryBuilder qb = graph.graql();
-        		                    	
+        GraknSession session = Grakn.session(Grakn.DEFAULT_URI, "biograkn");
+
         System.out.print("\nImporting proteing coding to gene associations from " + fileName + " ");
 
         while ((line = reader.readLine()) != null) {
@@ -165,51 +168,96 @@ public class _14_ProteinCoding {
         	*/
 
         	if (!entrezId.equals("")) {
-        		Var gene = var("g").isa("gene").has("geneId", entrezId);
         		
         		if (!uniprotIds.equals("")) {
-        			if (uniprotIds.contains("|")) {
-        				String uniprotId[] = uniprotIds.split("|");
-        				
-        				for (int i=0; i<uniprotId.length; ) {
-        					Var acc = var("acc").isa("proteinAccession").has("accession", uniprotId[i]);
-        					Var ref = var("ref").isa("entityReference").rel("identifier", "acc").rel("identified", "p");
-        					Var prot = var("p").isa("protein");
-        					Var rel = var("rel").isa("encoding").rel("encoder", "g").rel("encoded", "p");
+                	GraknGraph graph = session.open(GraknTxType.BATCH);
+                    QueryBuilder qb = graph.graql();
+
+                	MatchQuery findGene = qb.match(var("g").isa("gene").has("geneId", entrezId)).limit(1);        	
+                	Iterator<Concept> concepts = findGene.get("g").iterator();
+                	
+                	if (concepts.hasNext()) {
+                		
+                		Entity gene = concepts.next().asEntity();
+                		
+                		if (uniprotIds.contains("|")) {
+                			String uniprotId[] = uniprotIds.split("|");
+                			
+                			for (int i=0; i<uniprotId.length; ) {
+
+                               	MatchQuery findProtein = qb.match(
+                            			var("acc").isa("proteinAccession").has("accession", uniprotId[i]),
+                            			var().isa("entityReference").rel("identifier", "acc").rel("identified", "prot"),
+                            			var("prot").isa("protein")
+                            			).limit(1);        	
+                            	concepts = findProtein.get("prot").iterator();
+
+            					if (concepts.hasNext()) {
+            	            		Entity protein = concepts.next().asEntity();
+            	            		
+            	            		RelationType encodingType = graph.getRelationType("encoding");
+            	            		Role encoder = graph.getRole("encoder");
+            	            		Role encoded = graph.getRole("encoded");
+
+            	            		encodingType.addRelation()
+            		    				.addRolePlayer(encoder, gene)
+            		    				.addRolePlayer(encoded, protein);
+            	            		
+            	            		edgeCounter++;
+            					}
+                			}
+                		} else {
+ 
+                           	MatchQuery findProtein = qb.match(
+                        			var("acc").isa("proteinAccession").has("accession", uniprotIds),
+                        			var().isa("entityReference").rel("identifier", "acc").rel("identified", "prot"),
+                        			var("prot").isa("protein")
+                        			).limit(1);        	
+                        	concepts = findProtein.get("prot").iterator();
+                        	
+        					if (concepts.hasNext()) {
+        	            		Entity protein = concepts.next().asEntity();
+        	            		
+        	            		RelationType encodingType = graph.getRelationType("encoding");
+        	            		Role encoder = graph.getRole("encoder");
+        	            		Role encoded = graph.getRole("encoded");
+
+        	            		encodingType.addRelation()
+        		    				.addRolePlayer(encoder, gene)
+        		    				.addRolePlayer(encoded, protein);
+        	            		
+        	            		edgeCounter++;
+        					}
         					
-        					qb.match(gene, acc, ref, prot).insert( rel ).execute();
-        					break;
-        				}
-        			} else {
-     					Var acc = var("acc").isa("proteinAccession").has("accession", uniprotIds);
-    					Var ref = var("ref").isa("entityReference").rel("identifier", "acc").rel("identified", "p");
-    					Var prot = var("p").isa("protein");
-    					Var rel = var("rel").isa("encoding").rel("encoder", "g").rel("encoded", "p");
-    					
-    					qb.match(gene, acc, ref, prot).insert( rel ).execute();
+                		}
+                	}
+                	
+            		try {
+        				graph.commit();
+
+        				if (edgeCounter % 10000 == 0) {
+                        	System.out.print("."); System.out.flush();
+                        }
+        			} catch (InvalidGraphException e) {
+        				graph.abort();
+        				edgeCounter--;
         			}
-        			
-        			entryCounter++;
-        			graph.commit();
         		}        		
         	}
         	
-            if (entryCounter % 1000 == 0) {
+            if (edgeCounter % 2000 == 0) {
             	System.out.print("."); System.out.flush();
             }
         }
 
-        graph.close();
-
         long stopTime = (System.currentTimeMillis()-startTime)/1000;
-        System.out.println("\n\nCreated " + entryCounter + " relations in " + timeConversion(stopTime));
+        System.out.println("\n\nCreated " + edgeCounter + " relations in " + timeConversion(stopTime));
 
         reader.close();
     }
     
     public static void disableInternalLogs(){
-        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-        logger.setLevel(Level.OFF);
+    	org.apache.log4j.Logger logger4j = org.apache.log4j.Logger.getRootLogger();
+		logger4j.setLevel(org.apache.log4j.Level.toLevel("INFO"));
     }
-
 }
