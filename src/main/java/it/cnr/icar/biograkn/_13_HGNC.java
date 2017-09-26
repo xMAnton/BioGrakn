@@ -23,15 +23,13 @@ import static ai.grakn.graql.Graql.var;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
 
 import ai.grakn.Grakn;
 import ai.grakn.GraknGraph;
-import ai.grakn.exception.GraknValidationException;
+import ai.grakn.GraknSession;
+import ai.grakn.GraknTxType;
+import ai.grakn.graql.InsertQuery;
 import ai.grakn.graql.QueryBuilder;
-import ai.grakn.graql.Var;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 
 public class _13_HGNC {
 
@@ -49,7 +47,7 @@ public class _13_HGNC {
         return hours + " hours " + minutes + " minutes " + seconds + " seconds";
     }
 
-    public static void main(String[] args) throws IOException, GraknValidationException{
+    public static void main(String[] args) throws IOException {
         disableInternalLogs();
 
         String homeDir = System.getProperty("user.home");
@@ -64,8 +62,7 @@ public class _13_HGNC {
         // skip first line
         reader.readLine();
 
-        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograkn").getGraph();
-        QueryBuilder qb = graph.graql();
+        GraknSession session = Grakn.session(Grakn.DEFAULT_URI, "biograkn");
         		                    	
         System.out.print("\nImporting genes names from " + fileName + " ");
 
@@ -166,88 +163,77 @@ public class _13_HGNC {
         	*/
 
         	if (!entrezId.equals("")) {
-        		Var gene = var("g").isa("gene").has("geneId", entrezId);
-        		
-        		int cnt = 1;
-        		ArrayList<Var> vars = new ArrayList<Var>();
-        		
-        		if ((hgncId != null) && (!hgncId.equals(""))) {
-        			Var syn = var("syn" + cnt).isa("geneName").has("name", hgncId);
-        			Var rel = var("rel" + cnt).isa("entityReference").rel("identifier", "syn" + cnt).rel("identified", "g");
-        			
-        			vars.add(syn);
-        			vars.add(rel);
-        			
-        			entryCounter++;
-        			cnt++;
-        			
-        			//System.out.println(syn);
-        			//System.out.println(rel);
-        		}
-        		
+                GraknGraph graph = session.open(GraknTxType.BATCH);
+                QueryBuilder qb = graph.graql();
+
+            	if ((hgncId != null) && (!hgncId.equals(""))) {	
+            		InsertQuery iq = qb.insert(var().isa("geneName").has("name", hgncId));           		
+            		iq.execute();
+            		
+            		qb.match(
+            				var("g").isa("gene").has("geneId", entrezId),
+            				var("syn").isa("geneName").has("name", hgncId)
+            			).insert(
+            				var().isa("entityReference").rel("identifier", "syn").rel("identified", "g")
+            			);
+            		
+            		entryCounter++;
+            	}
+            	
         		if ((ensemblGeneId != null) && (!ensemblGeneId.equals(""))) {
-        			Var syn = var("syn" + cnt).isa("geneName").has("name", ensemblGeneId);
-        			Var rel = var("rel" + cnt).isa("entityReference").rel("identifier", "syn" + cnt).rel("identified", "g");
-        			
-        			vars.add(syn);
-        			vars.add(rel);
-        			
-        			entryCounter++;
-        			cnt++;
-        			
-        			//System.out.println(syn);
-        			//System.out.println(rel);
+            		InsertQuery iq = qb.insert(var().isa("geneName").has("name", ensemblGeneId));           		
+            		iq.execute();
+
+            		qb.match(
+            				var("g").isa("gene").has("geneId", entrezId),
+            				var("syn").isa("geneName").has("name", ensemblGeneId)
+            			).insert(
+            				var().isa("entityReference").rel("identifier", "syn").rel("identified", "g")
+            			);
+            		
+            		entryCounter++;
         		}
         		
         		if ((refseqAccession != null) && (!refseqAccession.equals(""))) {
         			if (refseqAccession.contains("|")) {
         				String refseqId[] = refseqAccession.split("|");
         				for (int i=0; i<refseqId.length; i++) {
-        					Var syn = var("syn" + cnt).isa("geneName").has("name", refseqId[i]);
-        					Var rel = var("rel" + cnt).isa("entityReference").rel("identifier", "syn" + cnt).rel("identified", "g");
-        					
-                			vars.add(syn);
-                			vars.add(rel);
-                			
+                    		InsertQuery iq = qb.insert(var().isa("geneName").has("name", refseqId[i]));           		
+                    		iq.execute();
+
+                    		qb.match(
+                    				var("g").isa("gene").has("geneId", entrezId),
+                    				var("syn").isa("geneName").has("name", refseqId[i])
+                    			).insert(
+                    				var().isa("entityReference").rel("identifier", "syn").rel("identified", "g")
+                    			);
+
                 			entryCounter++;
-                			cnt++;
-                			
-                			//System.out.println(syn);
-                			//System.out.println(rel);
         				}
         			} else {
-        				Var syn = var("syn" + cnt).isa("geneName").has("name", refseqAccession);
-        				Var rel = var("rel" + cnt).isa("entityReference").rel("identifier", "syn" + cnt).rel("identified", "g");
-        				
-            			vars.add(syn);
-            			vars.add(rel);
-            			
+                		InsertQuery iq = qb.insert(var().isa("geneName").has("name", refseqAccession));           		
+                		iq.execute();
+
+                		qb.match(
+                				var("g").isa("gene").has("geneId", entrezId),
+                				var("syn").isa("geneName").has("name", refseqAccession)
+                			).insert(
+                				var().isa("entityReference").rel("identifier", "syn").rel("identified", "g")
+                			);
+
             			entryCounter++;
-            			cnt++;
-            			
-            			//System.out.println(syn);
-            			//System.out.println(rel);
         			}
         		}
         		
-        		if (cnt > 1) {
-                	qb.match(
-                			gene
-                	).insert(
-            				vars
-            		).execute();
+                graph.commit();
 
-                	graph.commit();
-        		}
-
+                if (entryCounter % 1000 == 0) {
+                	System.out.print("."); System.out.flush();
+                }
         	}
-        	
-            if (entryCounter % 1000 == 0) {
-            	System.out.print("."); System.out.flush();
-            }
         }
 
-        graph.close();
+        session.close();
 
         long stopTime = (System.currentTimeMillis()-startTime)/1000;
         System.out.println("\n\nCreated " + entryCounter + " entities and " + entryCounter + " relations in " + timeConversion(stopTime));
@@ -256,8 +242,8 @@ public class _13_HGNC {
     }
     
     public static void disableInternalLogs(){
-        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-        logger.setLevel(Level.OFF);
+    	org.apache.log4j.Logger logger4j = org.apache.log4j.Logger.getRootLogger();
+		logger4j.setLevel(org.apache.log4j.Level.toLevel("INFO"));
     }
 
 }

@@ -26,10 +26,9 @@ import java.io.IOException;
 
 import ai.grakn.Grakn;
 import ai.grakn.GraknGraph;
-import ai.grakn.exception.GraknValidationException;
+import ai.grakn.GraknSession;
+import ai.grakn.GraknTxType;
 import ai.grakn.graql.QueryBuilder;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 
 public class _15_miRTarBase {
 
@@ -47,7 +46,7 @@ public class _15_miRTarBase {
 	    return hours + " hours " + minutes + " minutes " + seconds + " seconds";
 	}
 	
-	public static void main(String[] args) throws IOException, GraknValidationException {
+	public static void main(String[] args) throws IOException {
         disableInternalLogs();
 
         String homeDir = System.getProperty("user.home");
@@ -57,8 +56,7 @@ public class _15_miRTarBase {
 		int entryCounter = 0;
         long startTime = System.currentTimeMillis();
 
-        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograkn").getGraph();
-        QueryBuilder qb = graph.graql();
+        GraknSession session = Grakn.session(Grakn.DEFAULT_URI, "biograkn");
         		
 	    BufferedReader reader = new BufferedReader(new FileReader(fileName));
 
@@ -79,7 +77,10 @@ public class _15_miRTarBase {
         	String experiments = datavalue[6];
         	String supportType = datavalue[7];
         	//String pmid = datavalue[8];
-        	
+
+            GraknGraph graph = session.open(GraknTxType.BATCH);
+            QueryBuilder qb = graph.graql();
+
         	qb.match(
         			var("m").isa("mirnaMature").has("product", mirna),
         			var("g").isa("gene").has("symbol", targetGene)
@@ -101,7 +102,7 @@ public class _15_miRTarBase {
             }
         }
         
-        graph.close();
+        session.close();
         
         long stopTime = (System.currentTimeMillis()-startTime)/1000;
         System.out.println("\n\nCreated " + entryCounter + " entities, " + (entryCounter*3) + " resources and " + (entryCounter*2) + " relations in " + timeConversion(stopTime));
@@ -111,8 +112,8 @@ public class _15_miRTarBase {
 	}
 	
     public static void disableInternalLogs(){
-        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-        logger.setLevel(Level.OFF);
+    	org.apache.log4j.Logger logger4j = org.apache.log4j.Logger.getRootLogger();
+		logger4j.setLevel(org.apache.log4j.Level.toLevel("INFO"));
     }
     
 }

@@ -23,13 +23,18 @@ import static ai.grakn.graql.Graql.var;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.Iterator;
 
 import ai.grakn.Grakn;
 import ai.grakn.GraknGraph;
-import ai.grakn.exception.GraknValidationException;
+import ai.grakn.GraknSession;
+import ai.grakn.GraknTxType;
+import ai.grakn.concept.Concept;
+import ai.grakn.concept.Entity;
+import ai.grakn.concept.RelationType;
+import ai.grakn.concept.Role;
+import ai.grakn.graql.MatchQuery;
 import ai.grakn.graql.QueryBuilder;
-import ch.qos.logback.classic.Level;
-import ch.qos.logback.classic.Logger;
 
 public class _12_SNP2Mature {
 
@@ -47,14 +52,13 @@ public class _12_SNP2Mature {
         return hours + " hours " + minutes + " minutes " + seconds + " seconds";
     }
 
-    public static void main(String[] args) throws IOException, GraknValidationException{
+    public static void main(String[] args) throws IOException {
         disableInternalLogs();
 
         String homeDir = System.getProperty("user.home");
 		String fileName = homeDir + "/biodb/miRNASNP/snp_in_human_miRNA_seed_region.txt";
         String line;
-        int entryCounter = 0;
-        //int edgeCounter = 0;
+        int relCounter = 0;
         long startTime = System.currentTimeMillis();
 
         BufferedReader reader = new BufferedReader(new FileReader(fileName));
@@ -62,46 +66,68 @@ public class _12_SNP2Mature {
         // skip first line
         reader.readLine();
 
-        GraknGraph graph = Grakn.factory(Grakn.DEFAULT_URI, "biograkn").getGraph();
-        QueryBuilder qb = graph.graql();
+        GraknSession session = Grakn.session(Grakn.DEFAULT_URI, "biograkn");
         		                    	
-        System.out.print("\nLinking SNPs to matures reading from " + fileName + " ");
+        System.out.print("\nImporting SNPs-matures relations from " + fileName + " ");
 
         while ((line = reader.readLine()) != null) {
+            GraknGraph graph = session.open(GraknTxType.BATCH);
+            QueryBuilder qb = graph.graql();
+
             String datavalue[] = line.split("\t");
 
-        	String mirna = datavalue[0];
+        	String mirnaId = datavalue[0];
         	String snpId = datavalue[4];
 
-        	qb.match(
-        			var("m").isa("mirnaMature").has("product", mirna),
-        			var("s").isa("mirnaSNP").has("snpId", snpId)
-        	).insert(
-    				var().isa("snpMutation")
-    				.rel("mutated", "m")
-    				.rel("snp", "s")
-    		).execute();
+        	MatchQuery findMirna = qb.match(var("m").isa("mirnaMature").has("product", mirnaId)).limit(1);        	
+        	Iterator<Concept> concepts = findMirna.get("m").iterator();
 
-            graph.commit();
-            
-            entryCounter++;
+        	if (concepts.hasNext()) {
+        		
+        		Entity mirna = concepts.next().asEntity();
+        		
+            	MatchQuery findSnp = qb.match(var("s").isa("mirnaSNP").has("snpId", snpId)).limit(1);
+            	concepts = findSnp.get("s").iterator();
+            	
+            	if (concepts.hasNext()) {
+            		
+            		Entity snp = concepts.next().asEntity();
+            		
+            		RelationType mutation = graph.getRelationType("snpMutation");
+            		Role mutated = graph.getRole("mutated");
+            		Role snip = graph.getRole("snp");
 
-            if (entryCounter % 1000 == 0) {
-            	System.out.print("."); System.out.flush();
-            }
+            		mutation.addRelation()
+	    				.addRolePlayer(mutated, mirna)
+	    				.addRolePlayer(snip, snp);
+
+    				relCounter++;
+
+    				graph.commit();
+
+    	            if (relCounter % 1000 == 0) {
+    	            	System.out.print("."); System.out.flush();
+    	            }
+
+            	} else
+            		graph.close();
+
+        	} else
+        		graph.close();
+        	
         }
 
-        graph.close();
+        session.close();
 
         long stopTime = (System.currentTimeMillis()-startTime)/1000;
-        System.out.println("\n\nCreated " + entryCounter + " relations in " + timeConversion(stopTime));
+        System.out.println("\n\nCreated " + relCounter + " relations in " + timeConversion(stopTime));
 
         reader.close();
     }
     
     public static void disableInternalLogs(){
-        Logger logger = (Logger) org.slf4j.LoggerFactory.getLogger(org.slf4j.Logger.ROOT_LOGGER_NAME);
-        logger.setLevel(Level.OFF);
+    	org.apache.log4j.Logger logger4j = org.apache.log4j.Logger.getRootLogger();
+		logger4j.setLevel(org.apache.log4j.Level.toLevel("INFO"));
     }
 
 }
