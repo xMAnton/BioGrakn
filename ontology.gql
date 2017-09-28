@@ -195,6 +195,34 @@ byCancer sub role;
 mirnaWithSNP sub role;
 
 #
+# Inference-rules
+#
+
+$genesInPathways isa inference-rule,
+when {
+    $gene isa gene;
+    $protein isa $protein;
+    (encoder: $gene, encoded: $protein) isa encoding;
+    (container: $pathway, contained: $protein) isa containing;
+},
+then {
+    (container: $pathway, contained: $gene) isa containing;
+};
+
+$matureWithSNPsByCancer isa inference-rule,
+when {
+    $cancer isa cancer;
+    $mirna isa mirna;
+    $mature isa mirnaMature;
+    (upRegulator: $mirna, upRegulated: $cancer) isa upRegulation;
+    (precursor: $mirna, mature: $mature) isa precursorOf;
+    (mutated: $mature, snp: $snp) isa snpMutation;
+},
+then {
+    (byCancer: $cancer, mirnaWithSNP: $mature) isa matureWithSNPsByCancer;
+};
+
+#
 # Resources
 #
 
