@@ -111,34 +111,13 @@ public class _16_Uniprot2Pathway {
     		try {
 				graph.commit();
 
-				if (edgeCounter % 10000 == 0) {
+				if (edgeCounter % 50000 == 0) {
                 	System.out.print("."); System.out.flush();
                 }
 			} catch (InvalidGraphException e) {
 				graph.abort();
 				edgeCounter--;
 			}
-    		
-        	/*
-			qb.match(
-				var("path").isa("pathway").has("pathwayId", pathwayId),
-				var("acc").isa("proteinAccession").has("accession", uniprotId),
-				var().isa("entityReference").rel("identifier", "acc").rel("identified", "prot"),
-				var("prot").isa("protein")
-			).insert(
-				var().isa("containing")
-				.rel("container", "path")
-				.rel("contained", "prot")
-			).execute();
-
-    		try {
-				graph.commit();
-				entryCounter++;
-			} catch (GraknValidationException e) {
-				graph.rollback();
-				entryCounter--;
-			}
-			*/
         }
         
         long stopTime = (System.currentTimeMillis()-startTime)/1000;
