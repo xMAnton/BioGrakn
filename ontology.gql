@@ -1,107 +1,107 @@
-insert
+define
 
 #
 # Entities
 #
 
-gene sub entity
-	plays annotatedEntity
-	plays identified
-	plays encoder
-	plays interactingGene
-	plays contained
-	has geneId
-    has locusTag
-    has chromosome
-    has location
-    has description
-    has type
-    has symbol
-    has fullName
-    has otherDesignations
+gene sub entity,
+	plays annotatedEntity,
+	plays identified,
+	plays encoder,
+	plays interactingGene,
+	plays contained,
+	has geneId,
+    has locusTag,
+    has chromosome,
+    has location,
+    has description,
+    has type,
+    has symbol,
+    has fullName,
+    has otherDesignations,
     has nomenclatureStatus;
 
-go sub entity
-	plays functionalAnnotation
-	has goId
-	has name
-	has namespace
-	has definition
+go sub entity,
+	plays functionalAnnotation,
+	has goId,
+	has name,
+	has namespace,
+	has definition,
 	has comment;
 
-protein sub entity
-	plays annotatedEntity
-	plays contained
-	plays identified
-	plays encoded
-	has name
-	has fullName
-	has alternativeName
-	has sequence
-	has sequenceLength
-	has sequenceMass
-	has proteinGene
-	has function
-	has proteinPathway
-	has subunit
-	has tissue
-	has ptm
+protein sub entity,
+	plays annotatedEntity,
+	plays contained,
+	plays identified,
+	plays encoded,
+	has name,
+	has fullName,
+	has alternativeName,
+	has sequence,
+	has sequenceLength,
+	has sequenceMass,
+	has proteinGene,
+	has function,
+	has proteinPathway,
+	has subunit,
+	has tissue,
+	has ptm,
 	has similarity;
 
-pathway sub entity
-	plays annotatedEntity
-	plays container
-	has pathwayId
-	has name
-	has disease
+pathway sub entity,
+	plays annotatedEntity,
+	plays container,
+	has pathwayId,
+	has name,
+	has disease,
 	has summation;
 
-mirna sub entity
-	plays precursor
-	plays upRegulator
-	plays downRegulator
-	plays contained
-	has accession
-	has name
-	has description
-	has comment
+mirna sub entity,
+	plays precursor,
+	plays upRegulator,
+	plays downRegulator,
+	plays contained,
+	has accession,
+	has name,
+	has description,
+	has comment,
 	has sequence;
 	
-mirnaMature sub mirna
-	plays mature
-	plays mutated
-	plays interactingMiRNA
-	plays mirnaWithSNP
-	has product
+mirnaMature sub mirna,
+	plays mature,
+	plays mutated,
+	plays interactingMiRNA,
+	plays mirnaWithSNP,
+	has product,
 	has location;
 
-mirnaSNP sub entity
-	plays snp
-	has snpId
-	has chr
-	has mirStart
-	has mirEnd
-	has lostNum
+mirnaSNP sub entity,
+	plays snp,
+	has snpId,
+	has chr,
+	has mirStart,
+	has mirEnd,
+	has lostNum,
 	has gainNum;
 	
-cancer sub entity
-	plays upRegulated
-	plays downRegulated
-	plays byCancer
+cancer sub entity,
+	plays upRegulated,
+	plays downRegulated,
+	plays byCancer,
 	has name;
 	
-proteinAccession sub entity
-	plays identifier
+proteinAccession sub entity,
+	plays identifier,
 	has accession;
 
-geneName sub entity
-	plays identifier
+geneName sub entity,
+	plays identifier,
 	has name;
 
-interaction sub entity
-	plays interacting
-	has database
-	has experiments
+interaction sub entity,
+	plays interacting,
+	has database,
+	has experiments,
 	has supportType;
 	
 
@@ -109,55 +109,55 @@ interaction sub entity
 # Relations
 #
 
-annotation sub relation
-	relates functionalAnnotation
-	relates annotatedEntity
-	has evidence
-	has qualifier
+annotation sub relationship,
+	relates functionalAnnotation,
+	relates annotatedEntity,
+	has evidence,
+	has qualifier,
 	has category;
 
-containing sub relation
-	relates container
+containing sub relationship,
+	relates container,
 	relates contained;
 	
-precursorOf sub relation
-	relates precursor
+precursorOf sub relationship,
+	relates precursor,
 	relates mature;
 
-regulation sub relation is-abstract
-	relates regulator
+regulation sub relationship is-abstract,
+	relates regulator,
 	relates regulated;
 
-upRegulation sub regulation
-	relates upRegulator
+upRegulation sub regulation,
+	relates upRegulator,
 	relates upRegulated;
 
-downRegulation sub regulation
-	relates downRegulator
+downRegulation sub regulation,
+	relates downRegulator,
 	relates downRegulated;
 
-snpMutation sub relation
-	relates mutated
+snpMutation sub relationship,
+	relates mutated,
 	relates snp;
 	
-entityReference sub relation
-	relates identifier
+entityReference sub relationship,
+	relates identifier,
 	relates identified;
 
-encoding sub relation
-	relates encoder
+encoding sub relationship,
+	relates encoder,
 	relates encoded;
 
-interactionMiRNA sub relation
-	relates interactingMiRNA
+interactionMiRNA sub relationship,
+	relates interactingMiRNA,
 	relates interacting;
 
-interactionGene sub relation
-	relates interacting
+interactionGene sub relationship,
+	relates interacting,
 	relates interactingGene;
 	
-matureWithSNPsByCancer sub relation
-	relates byCancer
+matureWithSNPsByCancer sub relationship,
+	relates byCancer,
 	relates mirnaWithSNP;
 	
 	
@@ -198,18 +198,18 @@ mirnaWithSNP sub role;
 # Inference-rules
 #
 
-$genesInPathways isa inference-rule,
+genesInPathways sub rule
 when {
     $gene isa gene;
     $protein isa $protein;
     (encoder: $gene, encoded: $protein) isa encoding;
     (container: $pathway, contained: $protein) isa containing;
-},
+}
 then {
     (container: $pathway, contained: $gene) isa containing;
 };
 
-$matureWithSNPsByCancer isa inference-rule,
+maturesWithSNPsByCancer sub rule
 when {
     $cancer isa cancer;
     $mirna isa mirna;
@@ -217,74 +217,74 @@ when {
     (upRegulator: $mirna, upRegulated: $cancer) isa upRegulation;
     (precursor: $mirna, mature: $mature) isa precursorOf;
     (mutated: $mature, snp: $snp) isa snpMutation;
-},
+}
 then {
     (byCancer: $cancer, mirnaWithSNP: $mature) isa matureWithSNPsByCancer;
 };
 
 #
-# Resources
+# attributes
 #
 
-ID sub resource datatype string is-abstract;
+ID sub attribute datatype string is-abstract;
 
-# common resources
-location sub resource datatype string;
-description sub resource datatype string;
-symbol sub resource datatype string;
+# common attributes
+location sub attribute, datatype string;
+description sub attribute, datatype string;
+symbol sub attribute, datatype string;
 name sub ID;
 fullName sub name;
-comment sub resource datatype string;
-accession sub resource datatype string;
+comment sub attribute, datatype string;
+accession sub attribute, datatype string;
 
 # gene
 geneId sub ID;
-locusTag sub resource datatype string;
-chromosome sub resource datatype string;
-type sub resource datatype string;
-otherDesignations sub resource datatype string;
-nomenclatureStatus sub resource datatype string;
+locusTag sub attribute, datatype string;
+chromosome sub attribute, datatype string;
+type sub attribute, datatype string;
+otherDesignations sub attribute, datatype string;
+nomenclatureStatus sub attribute, datatype string;
 
 # go
 goId sub ID;
-namespace sub resource datatype string;
-definition sub resource datatype string;
+namespace sub attribute, datatype string;
+definition sub attribute, datatype string;
 
 # protein
 alternativeName sub name;
-proteinGene sub resource datatype string;
-function sub resource datatype string;
-proteinPathway sub resource datatype string;
-subunit sub resource datatype string;
-tissue sub resource datatype string;
-ptm sub resource datatype string;
-similarity sub resource datatype string;
-sequenceLength sub resource datatype long;
-sequenceMass sub resource datatype long;
+proteinGene sub attribute, datatype string;
+function sub attribute, datatype string;
+proteinPathway sub attribute, datatype string;
+subunit sub attribute, datatype string;
+tissue sub attribute, datatype string;
+ptm sub attribute, datatype string;
+similarity sub attribute, datatype string;
+sequenceLength sub attribute, datatype long;
+sequenceMass sub attribute, datatype long;
 
 # pathway
 pathwayId sub ID;
-disease sub resource datatype string;
-summation sub resource datatype string;
+disease sub attribute, datatype string;
+summation sub attribute, datatype string;
 
 # annotation
-evidence sub resource datatype string;
-qualifier sub resource datatype string;
-category sub resource datatype string;
+evidence sub attribute, datatype string;
+qualifier sub attribute, datatype string;
+category sub attribute, datatype string;
 
 # mirna
-product sub resource datatype string;
-sequence sub resource datatype string;
+product sub attribute, datatype string;
+sequence sub attribute, datatype string;
 
 # mirnaSNP
 snpId sub ID;
-chr sub resource datatype string;
-mirStart sub resource datatype long;
-mirEnd sub resource datatype long;
-lostNum sub resource datatype long;
-gainNum sub resource datatype long;
+chr sub attribute, datatype string;
+mirStart sub attribute, datatype long;
+mirEnd sub attribute, datatype long;
+lostNum sub attribute, datatype long;
+gainNum sub attribute, datatype long;
 
 # interaction
-database sub resource datatype string;
-experiments sub resource datatype string;
-supportType sub resource datatype string;
+database sub attribute, datatype string;
+experiments sub attribute, datatype string;
+supportType sub attribute, datatype string;
