@@ -48,3 +48,49 @@ With GRAKN.AI up and running, load the ontology and the inference rules:
 
 Note that you can use an ad-hoc keyspace, such as *biograkn* above. 
 
+&nbsp;
+
+## Import data
+
+The data import process is handled by the java program *BuildBioGrakn* contained in the previously downloaded .jar file.
+
+Its usage is briefly explained by running it with -h command line option:
+
+```
+ $ java -jar BuildBioGrakn.jar -h
+ usage: BuildBioGrakn
+ -d <arg>   data source path
+ -h         print this help
+ -k <arg>   keyspace
+```
+
+With no options, the program will use the following default values
+
+| name           | value         |
+| -------------- | ------------- |
+| data directory | *~/datasources* |
+| keyspace       | *biograkn*      |
+
+The output will be as follow:
+
+```
+$ java -jar BuildBioGrakn.jar 
+
+Building BioGrakn ...
+
+Importing NCBI Gene ........................ done
+Importing Gene Ontology ....................... done
+Importing Gene2GO ......................... done
+Importing miRBase .............................. done
+Importing Reactome ..................... done
+Importing Reactome2GO ............ done
+Importing Reactome2miRNA ............ done
+Importing miRCancer .............. done
+Importing Uniprot ......................... done
+Importing Uniprot2Reactome ......... done
+Importing HGNC ........................ done
+Importing miRNASNP ............ done
+Importing miRTarBase .................... done
+
+BioGrakn built in 0 hours 31 minutes 21 seconds
+```
