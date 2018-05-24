@@ -13,15 +13,38 @@ For further information, you can refer to the paper "[BioGrakn: A Knowledge Grap
 
 &nbsp;
 
+## Obtain the software
+
+You can find a ready-to-use binary version of the software (here)[https://github.com/xMAnton/BioGrakn/releases/tag/v1.2.0].
+
+Choose a work directory and be sure to download the .jar and the two .gql files containg the ontology and the inference rules.
+
+&nbsp;
+
 ## Data sources download 
 
-*BioGrakn* is built by integrating data available from several databases, such as NCBI Entrez Gene, Gene Ontology, the Uniprot Knowledge Base, Reactome, and others. 
+*BioGrakn* is built by integrating data available from several databases, such as NCBI Entrez Gene, Gene Ontology, Uniprot Knowledge Base, Reactome, and others. 
 
 For your convenience, all the used datasources have been collected and they are available for download from the URL [http://194.119.214.173/biograkn/](http://194.119.214.173/biograkn/).
 
-Create a work directory on your computer, e.g., `~/datasources`, and then copy the downloaded files into it, or alternatively, use *wget* this way:
+Create a destination directory on your computer, e.g., `~/datasources`, and then copy the downloaded files into it, or alternatively, use *wget* this way:
 
 ```
  $ wget -A .bz2 -r -nd -nv -P ~/datasources http://194.119.214.173/biograkn/
 ```
+
+&nbsp;
+
+## Load the ontology and the inference rules
+
+With GRAKN.AI up and running, load the ontology and the inference rules:
+
+```
+ $ cd [YOUR-GRAKN-1.2.0-DIR]
+ $ ./graql console -k biograkn -f [WORKDIR]/ontology.gql
+ $ ./graql console -k biograkn -f [WORKDIR]/rules.gql
+ $ cd [WORKDIR]
+```
+
+Note that you can use an ad-hoc keyspace, such as *biograkn* above. 
 
