@@ -11,6 +11,7 @@ A Knowledge Graph-based Semantic Database for Biomedical Sciences
 
 For further information, you can refer to the paper "[BioGrakn: A Knowledge Graph-based Semantic Database for Biomedical Sciences](https://link.springer.com/chapter/10.1007/978-3-319-61566-0_28)", presented at [CISIS-2017](http://voyager.ce.fit.ac.jp/conf/cisis/2017/), or to this [article on DZone](https://dzone.com/articles/a-knowledge-graph-based-semantic-database-for-biom).
 
+&nbsp;
 
 ## Data sources download 
 
