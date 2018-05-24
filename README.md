@@ -15,7 +15,7 @@ For further information, you can refer to the paper "[BioGrakn: A Knowledge Grap
 
 ## Obtain the software
 
-You can find a ready-to-use binary version of the software (here)[https://github.com/xMAnton/BioGrakn/releases/tag/v1.2.0].
+You can find a ready-to-use binary version of the software [here](https://github.com/xMAnton/BioGrakn/releases/tag/v1.2.0).
 
 Choose a work directory and be sure to download the .jar and the two .gql files containg the ontology and the inference rules.
 
