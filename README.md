@@ -71,7 +71,7 @@ With no options, the program will use the following default values
 | data directory | *~/datasources* |
 | keyspace       | *biograkn*      |
 
-The output will be as follow:
+The output will be as follow (except for the execution time, obviously!):
 
 ```
 $ java -jar BuildBioGrakn.jar 
