@@ -35,55 +35,25 @@ import org.biojavax.RichObjectFactory;
 import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequenceIterator;
 
-import ai.grakn.Grakn;
-import ai.grakn.client.BatchMutatorClient;
+import ai.grakn.Keyspace;
+import ai.grakn.client.BatchExecutorClient;
 import ai.grakn.graql.InsertQuery;
+import ai.grakn.graql.Query;
 
 import static ai.grakn.graql.Graql.*;
 
-public class _07_MiRBase {
+public class MiRBase extends Importer {
 
-    private static String timeConversion(long seconds) {
-
-        final int MINUTES_IN_AN_HOUR = 60;
-        final int SECONDS_IN_A_MINUTE = 60;
-
-        long minutes = seconds / SECONDS_IN_A_MINUTE;
-        seconds -= minutes * SECONDS_IN_A_MINUTE;
-
-        long hours = minutes / MINUTES_IN_AN_HOUR;
-        minutes -= hours * MINUTES_IN_AN_HOUR;
-
-        return hours + " hours " + minutes + " minutes " + seconds + " seconds";
-    }
-
-    public static void main(String[] args) throws IOException, NoSuchElementException, BioException{
-        disableInternalLogs();
-
-        String homeDir = System.getProperty("user.home");
-        int entryCounter = 0;
-        int resCounter = 0;
-        int relCounter = 0;
-        long startTime = System.currentTimeMillis();
-
-        // for grakn 0.11.0
-    	//System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
-    	//System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
-
-    	//LoaderClient loader = new LoaderClient("biograkn", Grakn.DEFAULT_URI);
-    	BatchMutatorClient loader = new BatchMutatorClient("biograkn", Grakn.DEFAULT_URI);
-
-        String fileName = homeDir + "/biodb/miRNA.dat";
-        
-        System.out.print("\nImporting mirnas from " + fileName + " ");
+	static public void importer(BatchExecutorClient loader, Keyspace keyspace, String fileName) throws IOException, NoSuchElementException, BioException {
+		int entryCounter = 0;
 
         BufferedReader br = new BufferedReader(new FileReader(fileName)); 
 		Namespace ns = RichObjectFactory.getDefaultNamespace();
 		RichSequenceIterator seqs = RichSequence.IOTools.readEMBLRNA(br, ns);
 
-		while (seqs.hasNext()) {
-			//ArrayList<Var> vars = new ArrayList<Var>();
-			
+        System.out.print("Importing miRBase ");
+
+        while (seqs.hasNext()) {
 			RichSequence entry = seqs.nextRichSequence();
 
 			String accession = entry.getAccession();
@@ -104,18 +74,16 @@ public class _07_MiRBase {
 			InsertQuery mirna = insert(
 					var("m")
 					.isa("mirna")
-        			.has("accession", accession)
-        			.has("name", name)
-        			.has("description", description)
-        			.has("comment", comment)
-        			.has("sequence", sequence)
-        			);
+	        			.has("accession", accession)
+	        			.has("name", name)
+	        			.has("description", description)
+	        			.has("comment", comment)
+	        			.has("sequence", sequence));
         	
-            entryCounter++;
-            resCounter += 5;
+			loader.add(mirna, keyspace);
 			
-            loader.add(mirna);
-            
+            entryCounter++;
+			
 			Iterator<Feature> itf = entry.getFeatureSet().iterator();
 			
 			int cnt = 1;
@@ -143,50 +111,29 @@ public class _07_MiRBase {
 
 				InsertQuery mature = insert(
 						var("mat" + cnt)
-	        			.isa("mirnaMature")
-	        			.has("accession", matAccession)
-	        			.has("product", matProduct)
-	        			.has("sequence", subSequence)
-	        			.has("location", location)
-	        			);
+		        			.isa("mirnaMature")
+		        			.has("accession", matAccession)
+		        			.has("product", matProduct)
+		        			.has("sequence", subSequence)
+		        			.has("location", location));
 				
+				loader.add(mature, keyspace);
+
 				entryCounter++;
-				resCounter += 4;
 
-				loader.add(mature);
+				Query<?> rel = match(var("m1").isa("mirna").has("accession", accession), var("m2").isa("mirnaMature").has("accession", matAccession)).insert(var("p"+cnt).isa("precursorOf").rel("precursor", "m1").rel("mature", "m2"));
 
-				/*
-				Var rel = 
-	        			var("rel" + cnt)
-						.isa("precursorOf")
-						.rel("precursor", "m")
-						.rel("mature", "mat" + cnt)
-						;
+				loader.add(rel, keyspace);
 
 				cnt++;
-				relCounter++;
-
-				vars.add(rel);
-				*/			
 			}
 
             if (entryCounter % 1000 == 0) {
-            	System.out.print("."); System.out.flush();
+            		System.out.print(".");
             }
 		}
-
-        loader.flush();
-        loader.waitToFinish();
-
-        long stopTime = (System.currentTimeMillis()-startTime)/1000;
-        System.out.println("\n\nCreated " + entryCounter + " entities, " + resCounter + " resources and " + relCounter + " relations in " + timeConversion(stopTime));
+		System.out.println(" done");
 
         br.close();
     }
-    
-    public static void disableInternalLogs(){
-    	org.apache.log4j.Logger logger4j = org.apache.log4j.Logger.getRootLogger();
-		logger4j.setLevel(org.apache.log4j.Level.toLevel("INFO"));
-    }
-    
 }

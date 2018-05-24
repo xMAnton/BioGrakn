@@ -1,0 +1,13 @@
+NCBIGene	Homo_sapiens.gene_info
+GeneOntology	go_daily-termdb.obo-xml
+Gene2Go	gene2go_human	// grep '^9606' gene2go | awk '{ print $2, $3; }' | uniq > gene2go_human
+MiRBase	miRNA.txt
+Reactome	pathway2summation.txt
+Reactome2Go	pathway2go.txt
+Reactome2Mirna	miRBase2Reactome_All_Levels.txt
+MiRCancer	miRCancers.txt	// LCTYPE=C LANG=C cut -f 1,2,3 -s miRCancerDecember2016.txt | tail -n +2 | sort | uniq > miRCancers.txt 
+Uniprot	uniprot_sprot.xml
+Uniprot2Pathway	uniprot2pathway.txt
+HGNC	hgnc.txt	// cut -f 1,19,20,24 hgnc_complete_set.txt > hgnc.txt
+MiRNASNP	snp_in_human_miRNA_seed_region.txt
+MiRTarBase	hsa_MTI.txt

@@ -18,8 +18,8 @@
 
 package it.cnr.icar.biograkn;
 
+import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.io.IOException;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -29,58 +29,31 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
-import ai.grakn.Grakn;
+import ai.grakn.Keyspace;
+import ai.grakn.client.BatchExecutorClient;
 import ai.grakn.graql.InsertQuery;
-import ai.grakn.client.BatchMutatorClient;
 
 import static ai.grakn.graql.Graql.*;
+
 import it.cnr.icar.biograkn.go.Header;
 import it.cnr.icar.biograkn.go.Source;
 import it.cnr.icar.biograkn.go.Term;
 import it.cnr.icar.biograkn.go.Typedef;
 
-public class _02_GeneOntology {
+public class GeneOntology extends Importer {
 	
-	private static String timeConversion(long seconds) {
-
-	    final int MINUTES_IN_AN_HOUR = 60;
-	    final int SECONDS_IN_A_MINUTE = 60;
-
-	    long minutes = seconds / SECONDS_IN_A_MINUTE;
-	    seconds -= minutes * SECONDS_IN_A_MINUTE;
-
-	    long hours = minutes / MINUTES_IN_AN_HOUR;
-	    minutes -= hours * MINUTES_IN_AN_HOUR;
-
-	    return hours + " hours " + minutes + " minutes " + seconds + " seconds";
-	}
-	
-	public static void main(String[] args) throws IOException, XMLStreamException, JAXBException {
-		String homeDir = System.getProperty("user.home");
-		
-		String fileName = homeDir + "/biodb/go_daily-termdb.obo-xml";
-		int entryCounter = 0;
-        //int relCounter = 0;
-        long startTime = System.currentTimeMillis();
-        
+	static public void importer(BatchExecutorClient loader, Keyspace keyspace, String fileName) throws FileNotFoundException, XMLStreamException, JAXBException {
         /*
 		HashMap<String, Node> idVertexMap = new HashMap<String, Node>();
-		
-    	HashMap<String, List<String>> termParentsMap = new HashMap<String, List<String>>();
-    	HashMap<String, List<String>> regulatesMap = new HashMap<String, List<String>>();
-    	HashMap<String, List<String>> negativelyRegulatesMap = new HashMap<String, List<String>>();
-    	HashMap<String, List<String>> positivelyRegulatesMap = new HashMap<String, List<String>>();
-    	HashMap<String, List<String>> partOfMap = new HashMap<String, List<String>>();
-    	HashMap<String, List<String>> hasPartMap = new HashMap<String, List<String>>();
-    	*/
+	    	HashMap<String, List<String>> termParentsMap = new HashMap<String, List<String>>();
+	    	HashMap<String, List<String>> regulatesMap = new HashMap<String, List<String>>();
+	    	HashMap<String, List<String>> negativelyRegulatesMap = new HashMap<String, List<String>>();
+	    	HashMap<String, List<String>> positivelyRegulatesMap = new HashMap<String, List<String>>();
+	    	HashMap<String, List<String>> partOfMap = new HashMap<String, List<String>>();
+	    	HashMap<String, List<String>> hasPartMap = new HashMap<String, List<String>>();
+         */
+        int entryCounter = 0;
         
-        // for grakn 0.11.0
-    	//System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
-    	//System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
-
-    	//LoaderClient loader = new LoaderClient("biograkn", Grakn.DEFAULT_URI);
-    	BatchMutatorClient loader = new BatchMutatorClient("biograkn", Grakn.DEFAULT_URI);
-
         XMLInputFactory xif = XMLInputFactory.newInstance();
         XMLStreamReader xsr = xif.createXMLStreamReader(new FileReader(fileName));
         xsr.nextTag(); // Advance to statements element
@@ -88,12 +61,11 @@ public class _02_GeneOntology {
         JAXBContext jc = JAXBContext.newInstance(Header.class, Source.class, Term.class, Typedef.class);
         Unmarshaller unmarshaller = jc.createUnmarshaller();
         
-        System.out.println("\nReading GO entries from " + fileName + "\n");
-        System.out.print("inserting term nodes ");
-        
+        System.out.print("Importing Gene Ontology ");
+
         while (xsr.nextTag() == XMLStreamConstants.START_ELEMENT) {
             Object entry = unmarshaller.unmarshal(xsr);
-            
+           
             if (entry instanceof Term) {
             	Term term = (Term)entry;
             	
@@ -101,30 +73,22 @@ public class _02_GeneOntology {
             	String goName = (term.getName() != null) ? term.getName() : "";
             	String goDefinition = ((term.getDef() != null) && (term.getDef().getDefstr() != null)) ? term.getDef().getDefstr() : "";
             	String goComment = (term.getComment() != null) ? term.getComment() : "";
-            	/*
-            	String goIsObsolete = "";
-            	if (term.getIsObsolete() != null) {
-            		goIsObsolete = (term.getIsObsolete() == 1) ? "true" : "false";
-            	}
-            	*/
             	String goNamespace = (term.getNamespace() != null) ? term.getNamespace() : "";
-            	            	
-                entryCounter++;
-                
-                InsertQuery go = insert(
-                		var("t")
-                			.isa("go")
-                			.has("goId", goId)
-                			.has("name", goName)
-                			.has("definition", goDefinition)
-                			.has("comment", goComment)
-                			.has("namespace", goNamespace)
-                		);
-
-                loader.add(go);
+            	
+	            InsertQuery go = insert(
+	            		var("t")
+	            			.isa("go")
+	            			.has("goId", goId)
+	            			.has("name", goName)
+	            			.has("definition", goDefinition)
+	            			.has("comment", goComment)
+	            			.has("namespace", goNamespace)
+	            		);
 	
-                /*
-                idVertexMap.put(goId, t);
+	            loader.add(go, keyspace);
+
+            /*
+            idVertexMap.put(goId, t);
                 
             	termParentsMap.put(goId, term.getIsA());
             	
@@ -180,10 +144,12 @@ public class _02_GeneOntology {
         		*/
             }
 
-            if (entryCounter % 1000 == 0) {
-            	System.out.print("."); System.out.flush();
+            entryCounter++;
+        	if (entryCounter % 2000 == 0) {
+            	System.out.print(".");
             }
         }
+        System.out.println(" done");
 
         /*
         System.out.println("\n\ncreating relationships:");
@@ -290,10 +256,6 @@ public class _02_GeneOntology {
         }
         */
         
-        loader.flush();
-        loader.waitToFinish();
-
-        long stopTime = (System.currentTimeMillis()-startTime)/1000;
-        System.out.println("\n\nImported " + entryCounter + " GO terms and " + (entryCounter*5) + " resources in " + timeConversion(stopTime));
+        xsr.close();
 	}
 }

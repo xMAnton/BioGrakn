@@ -29,9 +29,9 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
-import ai.grakn.Grakn;
-import ai.grakn.graql.InsertQuery;
-import ai.grakn.client.BatchMutatorClient;
+import ai.grakn.Keyspace;
+import ai.grakn.client.BatchExecutorClient;
+import ai.grakn.graql.Query;
 
 import static ai.grakn.graql.Graql.*;
 
@@ -42,41 +42,12 @@ import it.cnr.icar.biograkn.uniprot.OrganismType;
 import it.cnr.icar.biograkn.uniprot.ProteinType;
 import it.cnr.icar.biograkn.uniprot.SequenceType;
 
-public class _03_Uniprot {
+public class Uniprot extends Importer {
 
-	private static String timeConversion(long seconds) {
+	static public void importer(BatchExecutorClient loader, Keyspace keyspace, String fileName) throws IOException, XMLStreamException, JAXBException {
+		int entryCounter = 0;
 
-	    final int MINUTES_IN_AN_HOUR = 60;
-	    final int SECONDS_IN_A_MINUTE = 60;
-
-	    long minutes = seconds / SECONDS_IN_A_MINUTE;
-	    seconds -= minutes * SECONDS_IN_A_MINUTE;
-
-	    long hours = minutes / MINUTES_IN_AN_HOUR;
-	    minutes -= hours * MINUTES_IN_AN_HOUR;
-
-	    return hours + " hours " + minutes + " minutes " + seconds + " seconds";
-	}
-	
-	public static void main(String[] args) throws IOException, XMLStreamException, JAXBException {
-        disableInternalLogs();
-
-        String homeDir = System.getProperty("user.home");
-		
-        int entryCounter = 0;
-        int resCounter = 0;
-        int relCounter = 0;
-        
-        long startTime = System.currentTimeMillis();
-        String fileName = homeDir + "/biodb/uniprot_sprot.xml";
-
-        // for grakn 0.11.0
-    	//System.setProperty(ConfigProperties.CONFIG_FILE_SYSTEM_PROPERTY, "./conf/grakn-engine.properties");
-    	//System.setProperty(ConfigProperties.LOG_FILE_CONFIG_SYSTEM_PROPERTY, "./conf/logback.xml");
-
-    	BatchMutatorClient loader = new BatchMutatorClient("biograkn", Grakn.DEFAULT_URI);
-
-        System.out.print("\nReading proteins entries from " + fileName + " ");
+        System.out.print("Importing Uniprot ");
 
         XMLInputFactory xif = XMLInputFactory.newInstance();
         XMLStreamReader xsr = xif.createXMLStreamReader(new FileReader(fileName));
@@ -92,8 +63,7 @@ public class _03_Uniprot {
             String organismTaxonomyId = ((organism != null) && (!organism.getDbReference().isEmpty())) ? organism.getDbReference().get(0).getId() : "";
             
             if (organismTaxonomyId.equals("9606")) {
-            	//ArrayList<InsertQuery> vars = new ArrayList<InsertQuery>();
-            	
+	            	
             	if (entry.getAccession().isEmpty())
             		continue;
             	
@@ -111,7 +81,7 @@ public class _03_Uniprot {
             			gene = geneType.getName().get(0).getValue();
             		}
             	}
-            	
+	            	
             	SequenceType seq = entry.getSequence();
             	String sequence = seq.getValue();
             	int sequenceLength = seq.getLength();
@@ -123,7 +93,7 @@ public class _03_Uniprot {
             	String tissue = "";
             	String ptm = "";
             	String similarity = "";
-            	
+	            	
             	for (CommentType comment : entry.getComment()) {
             		if (comment.getText().isEmpty())
             			continue;
@@ -143,74 +113,81 @@ public class _03_Uniprot {
             			similarity = s;
             		}
             	}
-
-            	InsertQuery protein = insert(
-            			var("p")
-            			.isa("protein")
-            			.has("name", name)
-            			.has("fullName", fullName)
-            			.has("alternativeName", alternativeName)
-            			.has("proteinGene", gene)
-            			.has("function", function)
-            			.has("proteinPathway", pathway)
-            			.has("subunit", subunit)
-            			.has("tissue", tissue)
-            			.has("ptm", ptm)
-            			.has("similarity", similarity)
-            			.has("sequence", sequence)
-            			.has("sequenceLength", sequenceLength)
-            			.has("sequenceMass", sequenceMass)
+	            	
+            	Query<?> protein = null;
+            	
+            	if (gene.equals(""))
+            		protein = insert(
+	            			var("p")
+	            			.isa("protein")
+	            			.has("name", name)
+	            			.has("fullName", fullName)
+	            			.has("alternativeName", alternativeName)
+	            			.has("proteinGene", gene)
+	            			.has("function", function)
+	            			.has("proteinPathway", pathway)
+	            			.has("subunit", subunit)
+	            			.has("tissue", tissue)
+	            			.has("ptm", ptm)
+	            			.has("similarity", similarity)
+	            			.has("sequence", sequence)
+	            			.has("sequenceLength", sequenceLength)
+	            			.has("sequenceMass", sequenceMass)
             			);
+            	else {
+            		protein = 
+            			match(
+            				var("g").isa("gene").has("symbol", gene)
+            			).
+            			insert(
+	            			var("p")
+	            			.isa("protein")
+	            			.has("name", name)
+	            			.has("fullName", fullName)
+	            			.has("alternativeName", alternativeName)
+	            			.has("proteinGene", gene)
+	            			.has("function", function)
+	            			.has("proteinPathway", pathway)
+	            			.has("subunit", subunit)
+	            			.has("tissue", tissue)
+	            			.has("ptm", ptm)
+	            			.has("similarity", similarity)
+	            			.has("sequence", sequence)
+	            			.has("sequenceLength", sequenceLength)
+	            			.has("sequenceMass", sequenceMass),
+	            			
+	            			var().isa("encoding").rel("encoder", "g").rel("encoded", "p")
+            			);
+            	}
+	            	                
+                loader.add(protein, keyspace);
             	
                 entryCounter++;
-                resCounter += 13;
-                
-                loader.add(protein);
 
-                /*
                 int cnt = 1;
             	for (String accessionName : entry.getAccession()) {
-            		InsertQuery accession = insert(
-            				var("acc" + cnt)
-            				.isa("proteinAccession")
-            				.has("accession", accessionName)
+            		Query<?> accession = 
+            				match(
+        						var("p").isa("protein").has("name", name)
+            				).
+            				insert(
+	            				var("acc" + cnt).isa("proteinAccession").has("accession", accessionName),
+	            				var("rel" + cnt).isa("entityReference").rel("identified", "p").rel("identifier", "acc"+cnt)
             				);
             		
-            		loader.add(accession);
+            		loader.add(accession, keyspace);
             		
             		entryCounter++;
-            		resCounter++;
-            		            		
-            		InsertQuery rel = insert(
-    	        			var("rel" + cnt)
-    						.isa("entityReference")
-    						.rel("identifier", "acc" + cnt)
-    						.rel("identified", "p")
-    						);
-
-    				loader.add(rel);	
-    				
-    				relCounter++;
-
     				cnt++;
             	}
-            	*/
             	
-                if (entryCounter % 2000 == 0) {
-                	System.out.print("."); System.out.flush();
+                if (entryCounter % 1000 == 0) {
+            		System.out.print(".");
                 }
-        	}
+            }
         }
+        System.out.println(" done");
 
-        loader.flush();
-        loader.waitToFinish();
-        	
-        long stopTime = (System.currentTimeMillis()-startTime)/1000;
-        System.out.println("\n\nCreated " + entryCounter + " entities, " + resCounter + " resources and " + relCounter + " relations in " + timeConversion(stopTime));
-	}
-	
-    public static void disableInternalLogs(){
-    	org.apache.log4j.Logger logger4j = org.apache.log4j.Logger.getRootLogger();
-		logger4j.setLevel(org.apache.log4j.Level.toLevel("INFO"));
-    }
+        xsr.close();
+ 	}
 }
