@@ -27,10 +27,16 @@ Choose a work directory and be sure to download the .jar and the two .gql files 
 
 For your convenience, all the used datasources have been collected and they are available for download from the URL [http://194.119.214.173/biograkn/](http://194.119.214.173/biograkn/).
 
-Create a destination directory on your computer, e.g., `~/datasources`, and then copy the downloaded files into it, or alternatively, use *wget* this way:
+Create a destination directory on your computer, e.g., `~/datasources`, and then copy the downloaded files into it. Alternatively, use a preferred method of yours to download all the files together. For example, with *wget*:
 
 ```
  $ wget -A .bz2 -r -nd -nv -P ~/datasources http://194.119.214.173/biograkn/
+```
+
+Now, uncompress the files:
+
+```
+ $ bunzip2 ~/datasources/*
 ```
 
 &nbsp;
@@ -46,7 +52,7 @@ With GRAKN.AI up and running, load the ontology and the inference rules:
  $ cd [WORKDIR]
 ```
 
-Note that you can use an ad-hoc keyspace, such as *biograkn* above. 
+Note that you can use an ad-hoc keyspace, such as *biograkn* used above. 
 
 &nbsp;
 
@@ -71,7 +77,7 @@ With no options, the program will use the following default values
 | data directory | *~/datasources* |
 | keyspace       | *biograkn*      |
 
-The output will be as follow (except for the execution time, obviously!):
+The output should be as follow (except for the execution time, obviously!):
 
 ```
 $ java -jar BuildBioGrakn.jar 
@@ -94,3 +100,8 @@ Importing miRTarBase .................... done
 
 BioGrakn built in 0 hours 31 minutes 21 seconds
 ```
+
+&nbsp;
+
+## Play with BioGrakn
+
