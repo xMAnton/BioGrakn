@@ -101,8 +101,31 @@ Importing miRTarBase .................... done
 BioGrakn built in 0 hours 31 minutes 21 seconds
 ```
 
+Now, if you open the web visualizer, querying for "all types" will show something like this:
+
+![BioGrakn schema](https://github.com/xMAnton/BioGrakn/blob/master/biograkn-schema.png?raw=true)
+
 &nbsp;
 
 ## Play with BioGrakn
 
-![BioGrakn schema](https://github.com/xMAnton/BioGrakn/blob/master/biograkn-schema.png?raw=true)
+This section shows how to start playing with BioGrakn. Two sample queries are reported:
+
+* Search for genes linked to a particular Gene Ontology annotation
+* Search for pathways linked to a particular gene
+
+&nbsp;
+
+### Search for genes linked to a particular Gene Ontology annotation
+
+Lets consider the Gene Ontology annotation ”*platelet activating factor biosynthetic process*”, that has *GO:0006663* as identifier.
+
+In order to find annotated genes, the annotation relation, with the functional annotation member equal to our starting identifier, points out all the related annotated entities, from which we extract the genes, printing their symbols and names.
+
+The following Graql query returns the desired results:
+
+```
+ match $go has goId "GO:0006663"; (functionalAnnotation: $go, annotatedEntity: $gene) isa annotation; $gene isa gene; get;
+```
+
+
