@@ -118,13 +118,19 @@ This section shows how to start playing with BioGrakn. Two sample queries are re
 
 ### Search for genes linked to a particular Gene Ontology annotation
 
-Lets consider the Gene Ontology annotation ”*platelet activating factor biosynthetic process*”, that has *GO:0006663* as identifier.
+Let's consider the Gene Ontology annotation ”*glicocerol ether metabolic process*”, that has *GO:0006662* as identifier.
 
 In order to find annotated genes, the annotation relation, with the functional annotation member equal to our starting identifier, points out all the related annotated entities, from which we extract the genes, printing their symbols and names.
 
 The following Graql query returns the desired results:
 
-(to be completed)
+```
+	match $go has goId "GO:0006662";
+		(functionalAnnotation: $go, annotatedEntity: $gene); 
+		$gene isa gene; get;
+```
+
+![BioGrakn Sample query 1](https://github.com/xMAnton/BioGrakn/blob/master/biograkn-query1.png?raw=true)
 
 &nbsp;
 
