@@ -17,7 +17,7 @@ For further information, you can refer to the paper "[BioGrakn: A Knowledge Grap
 
 You can find a ready-to-use binary version of the software [here](https://github.com/xMAnton/BioGrakn/releases/tag/v1.2.0).
 
-Choose a work directory and be sure to download the .jar and the two .gql files containg the ontology and the inference rules.
+Choose a work directory and be sure to download the .jar and the two .gql files containing the ontology and the inference rules.
 
 &nbsp;
 
@@ -105,3 +105,4 @@ BioGrakn built in 0 hours 31 minutes 21 seconds
 
 ## Play with BioGrakn
 
+![BioGrakn schema](https://github.com/xMAnton/BioGrakn/blob/master/biograkn-schema.png?raw=true)
