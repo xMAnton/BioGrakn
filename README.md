@@ -126,10 +126,15 @@ The following Graql query returns the desired results:
 
 (to be completed)
 
+&nbsp;
 
 ### Search for pathways linked to a particular gene
 
-At a first sight, this seems like the previous problem. However, genes cannot be directly linked to pathways, because Reactome just provides pathway-to-proteins associations. Therefore, we have to go through two relations: encoding, that links genes to proteins, and containing, that links pathways to proteins.
+At a first sight, this seems like the previous problem. 
+
+However, genes cannot be directly linked to pathways, because Reactome just provides pathway-to-proteins associations. 
+
+Therefore, we have to go through two relations: encoding, that links genes to proteins, and containing, that links pathways to proteins.
 
 The Graql query is then formed as follows:
 
