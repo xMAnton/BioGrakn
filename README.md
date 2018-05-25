@@ -124,8 +124,13 @@ In order to find annotated genes, the annotation relation, with the functional a
 
 The following Graql query returns the desired results:
 
-```
- match $go has goId "GO:0006663"; (functionalAnnotation: $go, annotatedEntity: $gene) isa annotation; $gene isa gene; get;
-```
+(to be completed)
 
 
+### Search for pathways linked to a particular gene
+
+At a first sight, this seems like the previous problem. However, genes cannot be directly linked to pathways, because Reactome just provides pathway-to-proteins associations. Therefore, we have to go through two relations: encoding, that links genes to proteins, and containing, that links pathways to proteins.
+
+The Graql query is then formed as follows:
+
+(to be completed)
