@@ -25,16 +25,17 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 
-import ai.grakn.Keyspace;
-import ai.grakn.client.BatchExecutorClient;
+import ai.grakn.GraknTxType;
+import ai.grakn.client.Grakn;
 import ai.grakn.graql.Query;
 
 public class MiRTarBase extends Importer {
 
-	static public void importer(BatchExecutorClient loader, Keyspace keyspace, String fileName) throws IOException {
+	static public void importer(Grakn.Session session, String fileName) throws IOException {
 		String line;
 		int entryCounter = 0;
 
+		Grakn.Transaction graknTx = session.transaction(GraknTxType.WRITE);
 	    BufferedReader reader = new BufferedReader(new FileReader(fileName));
 
         System.out.print("Importing miRTarBase ");
@@ -68,16 +69,24 @@ public class MiRTarBase extends Importer {
 	        				var().isa("interactionGene").rel("interacting", "i").rel("interactingGene", "g")
 	        			);
 
-        	loader.add(rel, keyspace);
+        	rel.withTx(graknTx).execute();
         	
             entryCounter++;
     		
-            if (entryCounter % 20000 == 0) {
-        		System.out.print(".");
+            if (entryCounter % 5000 == 0) {
+            	graknTx.commit();
+            	graknTx.close();
+            	
+            	graknTx = session.transaction(GraknTxType.WRITE);
+            	
+            	System.out.print(".");
             }
         }
         System.out.println(" done");
         
+        graknTx.commit();
+    	graknTx.close();
+    	
         reader.close();
 	}
 }

@@ -24,18 +24,19 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 
-import ai.grakn.Keyspace;
-import ai.grakn.client.BatchExecutorClient;
+import ai.grakn.GraknTxType;
+import ai.grakn.client.Grakn;
 import ai.grakn.graql.InsertQuery;
 
 import static ai.grakn.graql.Graql.*;
 
 public class Reactome extends Importer {
 
-	static public void importer(BatchExecutorClient loader, Keyspace keyspace, String fileName) throws IOException {
+	static public void importer(Grakn.Session session, String fileName) throws IOException {
         String line;
 		int entryCounter = 0;
 
+        Grakn.Transaction graknTx = session.transaction(GraknTxType.WRITE);
         BufferedReader reader = new BufferedReader(new FileReader(fileName));
 
         // skip first line
@@ -58,16 +59,24 @@ public class Reactome extends Importer {
         			.has("summation", summation)
         			);
 
-        	loader.add(pathway, keyspace);
+        	pathway.withTx(graknTx).execute();
         	
         	entryCounter++;
 	        	
             if (entryCounter % 100 == 0) {
-            		System.out.print(".");
+            	graknTx.commit();
+            	graknTx.close();
+            	
+            	graknTx = session.transaction(GraknTxType.WRITE);
+
+            	System.out.print(".");
             }
         }
         System.out.println(" done");
-        
+
+    	graknTx.commit();
+    	graknTx.close();
+
         reader.close();
     }
 }

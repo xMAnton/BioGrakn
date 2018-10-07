@@ -20,6 +20,7 @@ package it.cnr.icar.biograkn;
 
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.NoSuchElementException;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -29,32 +30,35 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
-import ai.grakn.Keyspace;
-import ai.grakn.client.BatchExecutorClient;
+import org.uniprot.uniprot.OrganismType;
+import org.uniprot.uniprot.ProteinType;
+import org.uniprot.uniprot.SequenceType;
+import org.uniprot.uniprot.CommentType;
+import org.uniprot.uniprot.Entry;
+import org.uniprot.uniprot.GeneType;
+
+import ai.grakn.GraknTxType;
+import ai.grakn.client.Grakn;
 import ai.grakn.graql.Query;
+import ai.grakn.graql.VarPattern;
 
 import static ai.grakn.graql.Graql.*;
 
-import it.cnr.icar.biograkn.uniprot.CommentType;
-import it.cnr.icar.biograkn.uniprot.Entry;
-import it.cnr.icar.biograkn.uniprot.GeneType;
-import it.cnr.icar.biograkn.uniprot.OrganismType;
-import it.cnr.icar.biograkn.uniprot.ProteinType;
-import it.cnr.icar.biograkn.uniprot.SequenceType;
-
 public class Uniprot extends Importer {
 
-	static public void importer(BatchExecutorClient loader, Keyspace keyspace, String fileName) throws IOException, XMLStreamException, JAXBException {
+	static public void importer(Grakn.Session session, String fileName) throws IOException, XMLStreamException, JAXBException, NoSuchElementException {
 		int entryCounter = 0;
 
-        System.out.print("Importing Uniprot ");
+        Grakn.Transaction graknTx = session.transaction(GraknTxType.WRITE);
 
         XMLInputFactory xif = XMLInputFactory.newInstance();
         XMLStreamReader xsr = xif.createXMLStreamReader(new FileReader(fileName));
-        xsr.nextTag(); // Advance to statements element
+    	xsr.next(); // Advance to statements element
         
-        JAXBContext jc = JAXBContext.newInstance(Entry.class);
+        JAXBContext jc = JAXBContext.newInstance(Entry.class.getPackage().getName());
         Unmarshaller unmarshaller = jc.createUnmarshaller();
+        
+        System.out.print("Importing Uniprot SwissProt ");
         
         while (xsr.nextTag() == XMLStreamConstants.START_ELEMENT) {
             Entry entry = (Entry) unmarshaller.unmarshal(xsr);
@@ -69,7 +73,6 @@ public class Uniprot extends Importer {
             	
             	ProteinType prot = entry.getProtein();
             	
-            	//String accession = entry.getAccession().get(0);
             	String name = entry.getName().get(0);
             	String fullName = ((prot.getRecommendedName() != null) && (prot.getRecommendedName().getFullName() != null)) ? prot.getRecommendedName().getFullName().getValue() : "";
             	String alternativeName = ((!prot.getAlternativeName().isEmpty()) && (prot.getAlternativeName().get(0).getFullName() != null)) ? prot.getAlternativeName().get(0).getFullName().getValue() : "";
@@ -81,7 +84,7 @@ public class Uniprot extends Importer {
             			gene = geneType.getName().get(0).getValue();
             		}
             	}
-	            	
+	            
             	SequenceType seq = entry.getSequence();
             	String sequence = seq.getValue();
             	int sequenceLength = seq.getLength();
@@ -113,81 +116,61 @@ public class Uniprot extends Importer {
             			similarity = s;
             		}
             	}
-	            	
+	            
+            	VarPattern p = var("p")
+            			.isa("protein")
+            			.has("name", name)
+            			.has("fullName", fullName)
+            			.has("alternativeName", alternativeName)
+            			.has("proteinGene", gene)
+            			.has("function", function)
+            			.has("proteinPathway", pathway)
+            			.has("subunit", subunit)
+            			.has("tissue", tissue)
+            			.has("ptm", ptm)
+            			.has("similarity", similarity)
+            			.has("sequence", sequence)
+            			.has("sequenceLength", sequenceLength)
+            			.has("sequenceMass", sequenceMass)
+        				;
+            	
+            	for (String accessionName : entry.getAccession())
+            		p.has("accession", accessionName);
+            	
             	Query<?> protein = null;
             	
             	if (gene.equals(""))
-            		protein = insert(
-	            			var("p")
-	            			.isa("protein")
-	            			.has("name", name)
-	            			.has("fullName", fullName)
-	            			.has("alternativeName", alternativeName)
-	            			.has("proteinGene", gene)
-	            			.has("function", function)
-	            			.has("proteinPathway", pathway)
-	            			.has("subunit", subunit)
-	            			.has("tissue", tissue)
-	            			.has("ptm", ptm)
-	            			.has("similarity", similarity)
-	            			.has("sequence", sequence)
-	            			.has("sequenceLength", sequenceLength)
-	            			.has("sequenceMass", sequenceMass)
-            			);
+            		protein = insert(p);
             	else {
             		protein = 
             			match(
             				var("g").isa("gene").has("symbol", gene)
             			).
             			insert(
-	            			var("p")
-	            			.isa("protein")
-	            			.has("name", name)
-	            			.has("fullName", fullName)
-	            			.has("alternativeName", alternativeName)
-	            			.has("proteinGene", gene)
-	            			.has("function", function)
-	            			.has("proteinPathway", pathway)
-	            			.has("subunit", subunit)
-	            			.has("tissue", tissue)
-	            			.has("ptm", ptm)
-	            			.has("similarity", similarity)
-	            			.has("sequence", sequence)
-	            			.has("sequenceLength", sequenceLength)
-	            			.has("sequenceMass", sequenceMass),
-	            			
+	            			p,
 	            			var().isa("encoding").rel("encoder", "g").rel("encoded", "p")
             			);
             	}
-	            	                
-                loader.add(protein, keyspace);
+            	
+            	protein.withTx(graknTx).execute();
             	
                 entryCounter++;
-
-                int cnt = 1;
-            	for (String accessionName : entry.getAccession()) {
-            		Query<?> accession = 
-            				match(
-        						var("p").isa("protein").has("name", name)
-            				).
-            				insert(
-	            				var("acc" + cnt).isa("proteinAccession").has("accession", accessionName),
-	            				var("rel" + cnt).isa("entityReference").rel("identified", "p").rel("identifier", "acc"+cnt)
-            				);
-            		
-            		loader.add(accession, keyspace);
-            		
-            		entryCounter++;
-    				cnt++;
-            	}
             	
                 if (entryCounter % 1000 == 0) {
-            		System.out.print(".");
+                	graknTx.commit();
+                	graknTx.close();
+                	
+                	graknTx = session.transaction(GraknTxType.WRITE);
+
+                	System.out.print(".");
                 }
             }
         }
         System.out.println(" done");
 
-        xsr.close();
+        graknTx.commit();
+    	graknTx.close();
+
+        //xsr.close();
  	}
 }

@@ -126,7 +126,7 @@ The following Graql query returns the desired results:
 
 ```
 	match $go has goId "GO:0006662";
-		(functionalAnnotation: $go, annotatedEntity: $gene); 
+		(functionalAnnotation: $go, annotatedEntity: $gene) isa annotation; 
 		$gene isa gene; get;
 ```
 
@@ -143,5 +143,7 @@ However, genes cannot be directly linked to pathways, because Reactome just prov
 Therefore, we have to go through two relations: encoding, that links genes to proteins, and containing, that links pathways to proteins.
 
 The Graql query is then formed as follow:
+
+match $gene has symbol "LYPLA1"; (encoder: $gene, encoded: $protein) isa encoding; (container: $path, contained: $protein) isa containing; $path isa pathway; get
 
 (to be completed)

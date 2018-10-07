@@ -13,15 +13,18 @@ import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.HelpFormatter;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.slf4j.LoggerFactory;
 
-import ai.grakn.Grakn;
 import ai.grakn.Keyspace;
-import ai.grakn.client.BatchExecutorClient;
+import ai.grakn.client.Grakn;
+import ai.grakn.util.SimpleURI;
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
 
 public class BuildBioGrakn {
 
     public static final String defaultKeyspaceName = "biograkn";
-    public static final String defaultDataDourcePath = System.getProperty("user.home") + "/datasources" + "/";
+    public static final String defaultDataDourcePath = System.getProperty("user.home") + "/biograkn-datasources" + "/";
 
 	public static void main(String[] args) throws Exception {
 		String keyspaceName = defaultKeyspaceName;
@@ -65,8 +68,8 @@ public class BuildBioGrakn {
 		}
 
 		// disable internal logs
-		org.apache.log4j.Logger logger4j = org.apache.log4j.Logger.getRootLogger();
-		logger4j.setLevel(org.apache.log4j.Level.toLevel("INFO"));
+		Logger root = (Logger)LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+		root.setLevel(Level.INFO);
 
 		// init modules and sources map
 		String line;
@@ -91,21 +94,21 @@ public class BuildBioGrakn {
 		reader.close();
 		is.close();
 		
-		System.out.println("\nBuilding BioGrakn ...\n");
+		System.out.println("\nBuilding BioGrakn v1.4.2 ...\n");
 		
 		long startTime = System.currentTimeMillis();
 		
-		BatchExecutorClient loader = BatchExecutorClient.newBuilderforURI(Grakn.DEFAULT_URI).build();
-		Keyspace keyspace = Keyspace.of(keyspaceName);
+		Grakn grakn = new Grakn(new SimpleURI("localhost:48555"));
+		Grakn.Session session = grakn.session(Keyspace.of(keyspaceName));
 
 		// run import modules
 		for (String moduleName : sourcesModules.keySet()) {
 			Class<?> c = Class.forName("it.cnr.icar.biograkn." + moduleName);
-			Method m = c.getDeclaredMethod("importer", BatchExecutorClient.class, Keyspace.class, String.class);
-			m.invoke(null, loader, keyspace, sourcesModules.get(moduleName));
+			Method m = c.getDeclaredMethod("importer", Grakn.Session.class, String.class);
+			m.invoke(null, session, sourcesModules.get(moduleName));
 		}
 		
-		loader.close();
+		session.close();
 		
 		long deltaTime = (System.currentTimeMillis()-startTime)/1000;
         System.out.println("\nBioGrakn built in " + timeConversion(deltaTime) + "\n");

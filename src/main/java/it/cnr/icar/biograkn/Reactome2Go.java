@@ -25,16 +25,17 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 
-import ai.grakn.Keyspace;
-import ai.grakn.client.BatchExecutorClient;
+import ai.grakn.GraknTxType;
+import ai.grakn.client.Grakn;
 import ai.grakn.graql.Query;
 
 public class Reactome2Go extends Importer {
 
-	static public void importer(BatchExecutorClient loader, Keyspace keyspace, String fileName) throws IOException {
+	static public void importer(Grakn.Session session, String fileName) throws IOException {
 		int entryCounter = 0;
 		String line;
 
+		Grakn.Transaction graknTx = session.transaction(GraknTxType.WRITE);
 	    BufferedReader reader = new BufferedReader(new FileReader(fileName));
 
 		System.out.print("Importing Reactome2GO ");
@@ -42,23 +43,31 @@ public class Reactome2Go extends Importer {
         line = reader.readLine(); //skip header line
 
         while ((line = reader.readLine()) != null) {
-        		String datavalue[] = line.split("\t");
-        	
-	        	String pathwayId = datavalue[0];
-	        	String goId = datavalue[1];
+    		String datavalue[] = line.split("\t");
+    	
+        	String pathwayId = datavalue[0];
+        	String goId = datavalue[1];
 
-	        	Query<?> annotation = match(var("p").isa("pathway").has("pathwayId", pathwayId), var("g").isa("go").has("goId", goId)).insert(var("a").isa("annotation").rel("annotatedEntity", "p").rel("functionalAnnotation", "g"));
+        	Query<?> annotation = match(var("p").isa("pathway").has("pathwayId", pathwayId), var("g").isa("go").has("goId", goId)).insert(var("a").isa("annotation").rel("annotatedEntity", "p").rel("functionalAnnotation", "g"));
 
-	        	loader.add(annotation, keyspace);
+        	annotation.withTx(graknTx).execute();
 
-	        	entryCounter++;
+        	entryCounter++;
         		
             if (entryCounter % 2500 == 0) {
-                	System.out.print(".");
+            	graknTx.commit();
+            	graknTx.close();
+            	
+            	graknTx = session.transaction(GraknTxType.WRITE);
+
+            	System.out.print(".");
             }
         }
         System.out.println(" done");
         
-        reader.close();
+    	graknTx.commit();
+    	graknTx.close();
+
+    	reader.close();
 	}
 }

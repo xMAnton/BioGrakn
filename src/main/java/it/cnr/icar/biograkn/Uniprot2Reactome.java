@@ -18,68 +18,61 @@
 
 package it.cnr.icar.biograkn;
 
+import static ai.grakn.graql.Graql.match;
+import static ai.grakn.graql.Graql.var;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 
 import ai.grakn.GraknTxType;
 import ai.grakn.client.Grakn;
-import ai.grakn.graql.InsertQuery;
 import ai.grakn.graql.Query;
 
-import static ai.grakn.graql.Graql.*;
-
-public class MiRCancer extends Importer {
+public class Uniprot2Reactome extends Importer {
 
 	static public void importer(Grakn.Session session, String fileName) throws IOException {
-        String line;
+		String line;
 		int entryCounter = 0;
 
-        Grakn.Transaction graknTx = session.transaction(GraknTxType.WRITE);
-        BufferedReader reader = new BufferedReader(new FileReader(fileName));
+		Grakn.Transaction graknTx = session.transaction(GraknTxType.WRITE);
+	    BufferedReader reader = new BufferedReader(new FileReader(fileName));
 
-        System.out.print("Importing miRCancer ");
+        System.out.print("Importing Uniprot2Reactome ");
 
         while ((line = reader.readLine()) != null) {
-            String datavalue[] = line.split("\t");
+            String datavalue[] = line.split(" ");
 
-        	String mirId = datavalue[0];
-        	String cancerName = datavalue[1];
-        	String cancerProfile = datavalue[2];
+        	String uniprotId = datavalue[0];
+        	String pathwayId = datavalue[1];
+
+        	Query<?> q = 
+        		match(
+        			var("path").isa("pathway").has("pathwayId", pathwayId),
+        			var("prot").isa("protein").has("accession", uniprotId)
+        		).
+        		insert(
+        			var("c").isa("containing").rel("container", "path").rel("contained", "prot")
+        		);
+
+        	q.withTx(graknTx).execute();
         	
-        	String regulation = cancerProfile + "Regulation";
-        	String regulator  = cancerProfile + "Regulator";
-        	String regulated  = cancerProfile + "Regulated";
+        	entryCounter++;
 
-            InsertQuery cancer = insert(
-            			var("c")
-            			.isa("cancer")
-            			.has("name", cancerName)
-            			);
-
-            cancer.withTx(graknTx).execute();
-        	
-            entryCounter++;
-
-            if (cancerProfile.equals("up") || cancerProfile.equals("down")) {
-	        	Query<?> reg = match(var("m").isa("mirna").has("name", mirId), var("c").isa("cancer").has("name", cancerName)).insert(var("r").isa(regulation).rel(regulator, "m").rel(regulated, "c"));
-	
-	        	reg.withTx(graknTx).execute();
-            }
-    			
-            if (entryCounter % 250 == 0) {
+			if (entryCounter % 10000 == 0) {
+            	System.out.print(".");
+                
             	graknTx.commit();
             	graknTx.close();
             	
             	graknTx = session.transaction(GraknTxType.WRITE);
-        		System.out.print(".");
             }
         }
         System.out.println(" done");
         
         graknTx.commit();
     	graknTx.close();
-
-    	reader.close();
-    }
+        	
+        reader.close();
+	}
 }

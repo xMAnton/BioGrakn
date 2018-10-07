@@ -25,16 +25,17 @@ import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 
-import ai.grakn.Keyspace;
-import ai.grakn.client.BatchExecutorClient;
+import ai.grakn.GraknTxType;
+import ai.grakn.client.Grakn;
 import ai.grakn.graql.Query;
 
 public class MiRNASNP extends Importer {
 
-	static public void importer(BatchExecutorClient loader, Keyspace keyspace, String fileName) throws IOException {
+	static public void importer(Grakn.Session session, String fileName) throws IOException {
         String line;
 		int entryCounter = 0;
 
+		Grakn.Transaction graknTx = session.transaction(GraknTxType.WRITE);
         BufferedReader reader = new BufferedReader(new FileReader(fileName));
 
         System.out.print("Importing miRNASNP ");
@@ -69,16 +70,24 @@ public class MiRNASNP extends Importer {
 	            			var("rel").isa("snpMutation").rel("snp", "s").rel("mutated", "m")
 	        			);
 
-        	loader.add(snp, keyspace);
+        	snp.withTx(graknTx).execute();
         	
             entryCounter++;
 
         	if (entryCounter % 20 == 0) {
+            	graknTx.commit();
+            	graknTx.close();
+            	
+            	graknTx = session.transaction(GraknTxType.WRITE);
+            	
         		System.out.print(".");
             }
         }
         System.out.println(" done");
 
+        graknTx.commit();
+    	graknTx.close();
+    	
         reader.close();
     }
 }

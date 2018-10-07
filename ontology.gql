@@ -4,160 +4,144 @@ define
 # Entities
 #
 
-gene sub entity
-	plays annotatedEntity
-	plays identified
-	plays encoder
-	plays interactingGene
-	plays contained
-	has geneId
-    has locusTag
-    has chromosome
-    has location
-    has description
-    has type
-    has symbol
-    has fullName;
-#    has otherDesignations
-#    has nomenclatureStatus;
+gene sub entity,
+	has geneId,
+    has chromosome,
+    has location,
+    has description,
+    has type,
+    has symbol,
+    has fullName,
+	plays annotatedEntity,
+	plays encoder,
+	plays interactingGene,
+	plays contained;
 
-go sub entity
-	plays functionalAnnotation
-	has goId
-	has name
-	has namespace
-	has definition
-	has comment;
+go sub entity,
+	has goId,
+	has name,
+	has namespace,
+	has definition,
+	has comment,
+	plays functionalAnnotation;
 
-protein sub entity
-	plays annotatedEntity
-	plays contained
-	plays identified
-	plays encoded
-	has name
-	has fullName
-	has alternativeName
-	has sequence
-	has sequenceLength
-	has sequenceMass
-	has proteinGene
-	has function
-	has proteinPathway
-	has subunit
-	has tissue
-	has ptm
-	has similarity;
+protein sub entity,
+	has accession,
+	has name,
+	has fullName,
+	has alternativeName,
+	has sequence,
+	has sequenceLength,
+	has sequenceMass,
+	has proteinGene,
+	has function,
+	has proteinPathway,
+	has subunit,
+	has tissue,
+	has ptm,
+	has similarity,
+	plays annotatedEntity,
+	plays contained,
+	plays encoded;
 
-pathway sub entity
-	plays annotatedEntity
-	plays container
-	has pathwayId
-	has name
-	has disease
-	has summation;
+pathway sub entity,
+	has pathwayId,
+	has name,
+	has disease,
+	has summation,
+	plays annotatedEntity,
+	plays container;
 
-mirna sub entity
-	plays precursor
-	plays upRegulator
-	plays downRegulator
-	plays contained
-	has accession
-	has name
-	has description
-	has comment
-	has sequence;
+mirna sub entity,
+	has accession,
+	has name,
+	has description,
+	has comment,
+	has sequence,
+	plays precursor,
+	plays upRegulator,
+	plays downRegulator,
+	plays contained;
 	
-mirnaMature sub mirna
-	plays mature
-	plays mutated
-	plays interactingMiRNA
-	plays mirnaWithSNP
-	has product
-	has location;
+mirnaMature sub mirna,
+	has product,
+	has location,
+	plays mature,
+	plays mutated,
+	plays interactingMiRNA,
+	plays mirnaWithSNP;
 
-mirnaSNP sub entity
-	plays snp
-	has snpId
-	has chr
-	has mirStart
-	has mirEnd
-	has lostNum
-	has gainNum;
+mirnaSNP sub entity,
+	has snpId,
+	has chr,
+	has mirStart,
+	has mirEnd,
+	has lostNum,
+	has gainNum,
+	plays snp;
 	
-cancer sub entity
-	plays upRegulated
-	plays downRegulated
-	plays byCancer
-	has name;
+cancer sub entity,
+	has name,
+	plays upRegulated,
+	plays downRegulated,
+	plays byCancer;
 	
-proteinAccession sub entity
-	plays identifier
-	has accession;
-
-geneName sub entity
-	plays identifier
-	has name;
-
-interaction sub entity
-	plays interacting
-	has database
-	has experiments
-	has supportType;
+interaction sub entity,
+	has database,
+	has experiments,
+	has supportType,
+	plays interacting;
 	
 
 #
 # Relations
 #
 
-annotation sub relationship
-	relates functionalAnnotation
-	relates annotatedEntity
-	has evidence
-	has qualifier
-	has category;
+annotation sub relationship,
+	has evidence,
+	has qualifier,
+	has category,
+	relates functionalAnnotation,
+	relates annotatedEntity;
 
-containing sub relationship
-	relates container
+containing sub relationship,
+	relates container,
 	relates contained;
 	
-precursorOf sub relationship
-	relates precursor
+precursorOf sub relationship,
+	relates precursor,
 	relates mature;
 
-regulation sub relationship is-abstract
-	relates regulator
+regulation sub relationship is-abstract,
+	relates regulator,
 	relates regulated;
 
-upRegulation sub regulation
-	relates upRegulator
+upRegulation sub regulation,
+	relates upRegulator,
 	relates upRegulated;
 
-downRegulation sub regulation
-	relates downRegulator
+downRegulation sub regulation,
+	relates downRegulator,
 	relates downRegulated;
 
-snpMutation sub relationship
-	relates mutated
+snpMutation sub relationship,
+	relates mutated,
 	relates snp;
-	
-entityReference sub relationship
-	relates identifier
-	relates identified;
 
-encoding sub relationship
-	relates encoder
+encoding sub relationship,
+	relates encoder,
 	relates encoded;
 
-interactionMiRNA sub relationship
-	relates interactingMiRNA
+interactionMiRNA sub relationship,
+	relates interactingMiRNA,
 	relates interacting;
 
-interactionGene sub relationship
-	relates interacting
+interactionGene sub relationship,
+	relates interacting,
 	relates interactingGene;
 	
-matureWithSNPsByCancer sub relationship
-	relates byCancer
+matureWithSNPsByCancer sub relationship,
+	relates byCancer,
 	relates mirnaWithSNP;
 	
 	
@@ -180,9 +164,6 @@ upRegulator sub regulator;
 upRegulated sub regulated;
 downRegulator sub regulator;
 downRegulated sub regulated;
-
-identifier sub role;
-identified sub role;
 
 encoder sub role;
 encoded sub role;
@@ -211,11 +192,8 @@ accession sub attribute datatype string;
 
 # gene
 geneId sub ID;
-locusTag sub attribute datatype string;
 chromosome sub attribute datatype string;
 type sub attribute datatype string;
-# otherDesignations sub attribute datatype string;
-# nomenclatureStatus sub attribute datatype string;
 
 # go
 goId sub ID;

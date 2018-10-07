@@ -35,8 +35,8 @@ import org.biojavax.RichObjectFactory;
 import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequenceIterator;
 
-import ai.grakn.Keyspace;
-import ai.grakn.client.BatchExecutorClient;
+import ai.grakn.GraknTxType;
+import ai.grakn.client.Grakn;
 import ai.grakn.graql.InsertQuery;
 import ai.grakn.graql.Query;
 
@@ -44,9 +44,11 @@ import static ai.grakn.graql.Graql.*;
 
 public class MiRBase extends Importer {
 
-	static public void importer(BatchExecutorClient loader, Keyspace keyspace, String fileName) throws IOException, NoSuchElementException, BioException {
+	static public void importer(Grakn.Session session, String fileName) throws IOException, NoSuchElementException, BioException {
 		int entryCounter = 0;
 
+		Grakn.Transaction graknTx = session.transaction(GraknTxType.WRITE);
+		
         BufferedReader br = new BufferedReader(new FileReader(fileName)); 
 		Namespace ns = RichObjectFactory.getDefaultNamespace();
 		RichSequenceIterator seqs = RichSequence.IOTools.readEMBLRNA(br, ns);
@@ -80,7 +82,7 @@ public class MiRBase extends Importer {
 	        			.has("comment", comment)
 	        			.has("sequence", sequence));
         	
-			loader.add(mirna, keyspace);
+			mirna.withTx(graknTx).execute();
 			
             entryCounter++;
 			
@@ -117,23 +119,31 @@ public class MiRBase extends Importer {
 		        			.has("sequence", subSequence)
 		        			.has("location", location));
 				
-				loader.add(mature, keyspace);
+				mature.withTx(graknTx).execute();
 
 				entryCounter++;
 
 				Query<?> rel = match(var("m1").isa("mirna").has("accession", accession), var("m2").isa("mirnaMature").has("accession", matAccession)).insert(var("p"+cnt).isa("precursorOf").rel("precursor", "m1").rel("mature", "m2"));
 
-				loader.add(rel, keyspace);
+				rel.withTx(graknTx).execute();
 
 				cnt++;
 			}
 
             if (entryCounter % 1000 == 0) {
-            		System.out.print(".");
+            	graknTx.commit();
+            	graknTx.close();
+            	
+            	graknTx = session.transaction(GraknTxType.WRITE);
+
+        		System.out.print(".");
             }
 		}
 		System.out.println(" done");
 
+    	graknTx.commit();
+    	graknTx.close();
+    	
         br.close();
     }
 }

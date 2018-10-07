@@ -29,8 +29,8 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
-import ai.grakn.Keyspace;
-import ai.grakn.client.BatchExecutorClient;
+import ai.grakn.GraknTxType;
+import ai.grakn.client.Grakn;
 import ai.grakn.graql.InsertQuery;
 
 import static ai.grakn.graql.Graql.*;
@@ -42,7 +42,7 @@ import it.cnr.icar.biograkn.go.Typedef;
 
 public class GeneOntology extends Importer {
 	
-	static public void importer(BatchExecutorClient loader, Keyspace keyspace, String fileName) throws FileNotFoundException, XMLStreamException, JAXBException {
+	static public void importer(Grakn.Session session, String fileName) throws FileNotFoundException, XMLStreamException, JAXBException {
         /*
 		HashMap<String, Node> idVertexMap = new HashMap<String, Node>();
 	    	HashMap<String, List<String>> termParentsMap = new HashMap<String, List<String>>();
@@ -53,6 +53,8 @@ public class GeneOntology extends Importer {
 	    	HashMap<String, List<String>> hasPartMap = new HashMap<String, List<String>>();
          */
         int entryCounter = 0;
+        
+        Grakn.Transaction graknTx = session.transaction(GraknTxType.WRITE);
         
         XMLInputFactory xif = XMLInputFactory.newInstance();
         XMLStreamReader xsr = xif.createXMLStreamReader(new FileReader(fileName));
@@ -85,7 +87,7 @@ public class GeneOntology extends Importer {
 	            			.has("namespace", goNamespace)
 	            		);
 	
-	            loader.add(go, keyspace);
+	            go.withTx(graknTx).execute();
 
             /*
             idVertexMap.put(goId, t);
@@ -146,6 +148,11 @@ public class GeneOntology extends Importer {
 
             entryCounter++;
         	if (entryCounter % 2000 == 0) {
+            	graknTx.commit();
+            	graknTx.close();
+            	
+            	graknTx = session.transaction(GraknTxType.WRITE);
+
             	System.out.print(".");
             }
         }
@@ -257,5 +264,8 @@ public class GeneOntology extends Importer {
         */
         
         xsr.close();
+        
+        graknTx.commit();
+    	graknTx.close();
 	}
 }
