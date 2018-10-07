@@ -4,6 +4,16 @@
   <artifactId>biograkn</artifactId>
   <version>1.2</version>
   <name>biograkn</name>
+  <repositories>
+	  <repository>
+	    <id>releases</id>
+	    <url>https://oss.sonatype.org/content/repositories/releases</url>
+	  </repository>
+	  <repository>
+        <id>snapshots</id>
+        <url>http://maven.grakn.ai/nexus/content/repositories/snapshots</url>
+      </repository>
+  </repositories>
   <dependencies>
   	<dependency>
   		<groupId>ai.grakn</groupId>
