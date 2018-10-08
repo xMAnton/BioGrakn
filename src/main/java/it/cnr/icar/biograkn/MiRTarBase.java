@@ -73,7 +73,7 @@ public class MiRTarBase extends Importer {
         	
             entryCounter++;
     		
-            if (entryCounter % 5000 == 0) {
+            if (entryCounter % 20000 == 0) {
             	graknTx.commit();
             	graknTx.close();
             	

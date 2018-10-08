@@ -1,12 +1,12 @@
-#NCBIGene	Homo_sapiens.gene_info
-#GeneOntology	go_daily-termdb.obo-xml
-#Gene2Go	gene2go_human	// grep '^9606' gene2go | awk '{ print $2, $3; }' | uniq > gene2go_human
-#MiRBase	miRNA.txt	// grep -v '^R.' miRNA.dat > miRNA.txt
-#Reactome	pathway2summation.txt
-#Reactome2Go	pathway2go.txt	// grep R-HSA gene_association.reactome | awk '{ print $4 "\t" substr($5,index($5,":")+1) }' | uniq > pathway2go.txt
-#Reactome2Mirna	miRBase2Reactome_All_Levels.txt
-#MiRCancer	miRCancers.txt	// LCTYPE=C LANG=C cut -f 1,2,3 -s miRCancerOctober2017.txt | tail -n +2 | sort | uniq > miRCancers.txt 
-#Uniprot	uniprot_sprot2.xml	// sed $'s/<\/entry>/&\\\n/g' uniprot_sprot.xml > uniprot_sprot2.xml
-#Uniprot2Reactome	UniProt2Reactome_human	// grep 'R-HSA-' Uniprot2Reactome.txt | awk '{ print $1, $2; }' | uniq > UniProt2Reactome_human
-#MiRNASNP	snp_in_human_miRNA_seed_region.txt
+NCBIGene	Homo_sapiens.gene_info
+GeneOntology	go_daily-termdb.obo-xml
+Gene2Go	gene2go_human	// grep '^9606' gene2go | awk '{ print $2, $3; }' | uniq > gene2go_human
+MiRBase	miRNA.txt	// grep -v '^R.' miRNA.dat > miRNA.txt
+Reactome	pathway2summation.txt
+Reactome2Go	pathway2go.txt	// grep R-HSA gene_association.reactome | awk '{ print $4 "\t" substr($5,index($5,":")+1) }' | uniq > pathway2go.txt
+Reactome2Mirna	miRBase2Reactome_All_Levels.txt
+MiRCancer	miRCancers.txt	// LCTYPE=C LANG=C cut -f 1,2,3 -s miRCancerOctober2017.txt | tail -n +2 | sort | uniq > miRCancers.txt 
+Uniprot	uniprot_sprot2.xml	// sed $'s/<\/entry>/&\\\n/g' uniprot_sprot.xml > uniprot_sprot2.xml
+Uniprot2Reactome	UniProt2Reactome_human	// grep 'R-HSA-' Uniprot2Reactome.txt | awk '{ print $1, $2; }' | uniq > UniProt2Reactome_human
+MiRNASNP	snp_in_human_miRNA_seed_region.txt
 MiRTarBase	hsa_MTI.txt

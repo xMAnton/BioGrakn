@@ -96,11 +96,11 @@ public class BuildBioGrakn {
 		
 		System.out.println("\nBuilding BioGrakn v1.4.2 ...\n");
 		
-		long startTime = System.currentTimeMillis();
-		
 		Grakn grakn = new Grakn(new SimpleURI("localhost:48555"));
 		Grakn.Session session = grakn.session(Keyspace.of(keyspaceName));
 
+		long startTime = System.currentTimeMillis();
+				
 		// run import modules
 		for (String moduleName : sourcesModules.keySet()) {
 			Class<?> c = Class.forName("it.cnr.icar.biograkn." + moduleName);
