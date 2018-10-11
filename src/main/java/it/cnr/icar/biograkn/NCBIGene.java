@@ -21,7 +21,12 @@ package it.cnr.icar.biograkn;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import ai.grakn.GraknTxType;
 import ai.grakn.client.Grakn;
@@ -32,11 +37,13 @@ import static ai.grakn.graql.Graql.*;
 
 public class NCBIGene extends Importer {
 
-	static public void importer(Grakn.Session session, String fileName) throws IOException {        
+	static public void importer(Grakn.Session session, String fileName) throws IOException, InterruptedException, ExecutionException {        
         int entryCounter = 0;
         String line;
 
-        Grakn.Transaction graknTx = session.transaction(GraknTxType.WRITE);
+        ExecutorService executorService = Executors.newFixedThreadPool(8);
+        ArrayList<CompletableFuture<Void>> listOfFutures = new ArrayList<>();
+        
         BufferedReader reader = new BufferedReader(new FileReader(fileName));
 
         // skip first line
@@ -54,6 +61,7 @@ public class NCBIGene extends Importer {
             HashSet<String> symbols = new HashSet<String>(slists.length + 2);
             
             symbols.add(datavalue[2]);
+            
             for (int i=0; i<slists.length; i++) {
             	String s = slists[i];
             	if (s.startsWith("HGNC:") || s.startsWith("Vega:"))
@@ -62,6 +70,7 @@ public class NCBIGene extends Importer {
             		s = s.substring(8);
             	symbols.add(s);
             }
+            
             if (!datavalue[10].equals("-"))
             	symbols.add(datavalue[10]);
             
@@ -77,24 +86,29 @@ public class NCBIGene extends Importer {
             symbols.forEach(s -> g.has("symbol", s));
             
             InsertQuery gene = insert(g);
-            gene.withTx(graknTx).execute();
-            
+
             entryCounter++;
-
-            if (entryCounter % 2500 == 0) {
-            	graknTx.commit();
-            	graknTx.close();
-            	
-            	graknTx = session.transaction(GraknTxType.WRITE);
-            	
-            	System.out.print(".");
-            }
+            final int cnt = entryCounter;
+            
+            listOfFutures.add(CompletableFuture.runAsync(() -> {
+                Grakn.Transaction graknTx = session.transaction(GraknTxType.BATCH);
+                gene.withTx(graknTx).execute();
+                graknTx.commit();
+                
+                if (cnt % 2500 == 0) {
+                	System.out.print(".");
+                }
+        	}));
         }
+        
+        CompletableFuture<Void> allFutures =
+        CompletableFuture.
+        	allOf(listOfFutures.toArray(new CompletableFuture[listOfFutures.size()])).
+        	whenComplete((r, ex)-> executorService.shutdown());
+        
+        allFutures.get();
         System.out.println(" done");
-
-        graknTx.commit();
-    	graknTx.close();
-    	
+        
         reader.close();
     }    
 }

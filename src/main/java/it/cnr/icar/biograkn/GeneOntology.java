@@ -20,6 +20,11 @@ package it.cnr.icar.biograkn;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
+import java.util.ArrayList;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -42,7 +47,7 @@ import it.cnr.icar.biograkn.go.Typedef;
 
 public class GeneOntology extends Importer {
 	
-	static public void importer(Grakn.Session session, String fileName) throws FileNotFoundException, XMLStreamException, JAXBException {
+	static public void importer(Grakn.Session session, String fileName) throws FileNotFoundException, XMLStreamException, JAXBException, InterruptedException, ExecutionException {
         /*
 		HashMap<String, Node> idVertexMap = new HashMap<String, Node>();
 	    	HashMap<String, List<String>> termParentsMap = new HashMap<String, List<String>>();
@@ -54,7 +59,8 @@ public class GeneOntology extends Importer {
          */
         int entryCounter = 0;
         
-        Grakn.Transaction graknTx = session.transaction(GraknTxType.WRITE);
+        ExecutorService executorService = Executors.newFixedThreadPool(8);
+        ArrayList<CompletableFuture<Void>> listOfFutures = new ArrayList<>();
         
         XMLInputFactory xif = XMLInputFactory.newInstance();
         XMLStreamReader xsr = xif.createXMLStreamReader(new FileReader(fileName));
@@ -77,6 +83,9 @@ public class GeneOntology extends Importer {
             	String goComment = (term.getComment() != null) ? term.getComment() : "";
             	String goNamespace = (term.getNamespace() != null) ? term.getNamespace() : "";
             	
+                entryCounter++;
+                final int cnt = entryCounter;
+                
 	            InsertQuery go = insert(
 	            		var("t")
 	            			.isa("go")
@@ -86,9 +95,16 @@ public class GeneOntology extends Importer {
 	            			.has("comment", goComment)
 	            			.has("namespace", goNamespace)
 	            		);
-	
-	            go.withTx(graknTx).execute();
 
+	            listOfFutures.add(CompletableFuture.runAsync(() -> {
+		
+	                Grakn.Transaction graknTx = session.transaction(GraknTxType.BATCH);
+	                go.withTx(graknTx).execute();
+	                graknTx.commit();
+	
+	                if (cnt % 2000 == 0) {
+	                	System.out.print(".");
+	                }
             /*
             idVertexMap.put(goId, t);
                 
@@ -144,18 +160,17 @@ public class GeneOntology extends Importer {
             		}
         		}
         		*/
-            }
-
-            entryCounter++;
-        	if (entryCounter % 2000 == 0) {
-            	graknTx.commit();
-            	graknTx.close();
-            	
-            	graknTx = session.transaction(GraknTxType.WRITE);
-
-            	System.out.print(".");
+                }));
             }
         }
+            
+        CompletableFuture<Void> allFutures =
+            CompletableFuture.
+            	allOf(listOfFutures.toArray(new CompletableFuture[listOfFutures.size()])).
+            	whenComplete((r, ex)-> executorService.shutdown());
+                
+        allFutures.get();
+
         System.out.println(" done");
 
         /*
@@ -264,8 +279,5 @@ public class GeneOntology extends Importer {
         */
         
         xsr.close();
-        
-        graknTx.commit();
-    	graknTx.close();
 	}
 }

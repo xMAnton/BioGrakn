@@ -21,11 +21,16 @@ package it.cnr.icar.biograkn;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 import org.biojava.bio.BioException;
 import org.biojava.bio.seq.Feature;
@@ -44,10 +49,11 @@ import static ai.grakn.graql.Graql.*;
 
 public class MiRBase extends Importer {
 
-	static public void importer(Grakn.Session session, String fileName) throws IOException, NoSuchElementException, BioException {
+	static public void importer(Grakn.Session session, String fileName) throws IOException, NoSuchElementException, BioException, InterruptedException, ExecutionException {
 		int entryCounter = 0;
 
-		Grakn.Transaction graknTx = session.transaction(GraknTxType.WRITE);
+        ExecutorService executorService = Executors.newFixedThreadPool(8);
+        ArrayList<CompletableFuture<Void>> listOfFutures = new ArrayList<>();
 		
         BufferedReader br = new BufferedReader(new FileReader(fileName)); 
 		Namespace ns = RichObjectFactory.getDefaultNamespace();
@@ -73,7 +79,10 @@ public class MiRBase extends Importer {
 
 			String sequence = entry.getInternalSymbolList().seqString();
 			
-			InsertQuery mirna = insert(
+            entryCounter++;
+            final int counter = entryCounter;
+
+            InsertQuery mirna = insert(
 					var("m")
 					.isa("mirna")
 	        			.has("accession", accession)
@@ -81,69 +90,75 @@ public class MiRBase extends Importer {
 	        			.has("description", description)
 	        			.has("comment", comment)
 	        			.has("sequence", sequence));
-        	
-			mirna.withTx(graknTx).execute();
-			
-            entryCounter++;
-			
-			Iterator<Feature> itf = entry.getFeatureSet().iterator();
-			
-			int cnt = 1;
-			while (itf.hasNext()) {
-				Feature f = itf.next();
-				
-				String location = f.getLocation().toString();
-				String subSequence = sequence.substring(f.getLocation().getMin()-1, f.getLocation().getMax());
-				String matAccession = "";
-				String matProduct = "";
 
-				@SuppressWarnings("unchecked")
-				Map<Object, ?> map = f.getAnnotation().asMap();
-				Set<Object> keys = map.keySet();
-				for (Object key : keys) {
-					String keyString = key.toString();
-					String value = (String) map.get(key);
-					
-					if (keyString.substring(keyString.lastIndexOf(":")+1).equals("accession"))
-						matAccession = value;
-					
-					if (keyString.substring(keyString.lastIndexOf(":")+1).equals("product"))
-						matProduct = value;
-				}
+			listOfFutures.add(CompletableFuture.runAsync(() -> {
 
-				InsertQuery mature = insert(
-						var("mat" + cnt)
-		        			.isa("mirnaMature")
-		        			.has("accession", matAccession)
-		        			.has("product", matProduct)
-		        			.has("sequence", subSequence)
-		        			.has("location", location));
-				
-				mature.withTx(graknTx).execute();
+				Grakn.Transaction graknTx = session.transaction(GraknTxType.BATCH);				
+                mirna.withTx(graknTx).execute();
+                graknTx.commit();
 
-				entryCounter++;
+    			Iterator<Feature> itf = entry.getFeatureSet().iterator();
+    			
+    			int cnt = 1;
+    			while (itf.hasNext()) {
+    				Feature f = itf.next();
+    				
+    				String location = f.getLocation().toString();
+    				String subSequence = sequence.substring(f.getLocation().getMin()-1, f.getLocation().getMax());
+    				String matAccession = "";
+    				String matProduct = "";
 
-				Query<?> rel = match(var("m1").isa("mirna").has("accession", accession), var("m2").isa("mirnaMature").has("accession", matAccession)).insert(var("p"+cnt).isa("precursorOf").rel("precursor", "m1").rel("mature", "m2"));
+    				@SuppressWarnings("unchecked")
+    				Map<Object, ?> map = f.getAnnotation().asMap();
+    				Set<Object> keys = map.keySet();
+    				for (Object key : keys) {
+    					String keyString = key.toString();
+    					String value = (String) map.get(key);
+    					
+    					if (keyString.substring(keyString.lastIndexOf(":")+1).equals("accession"))
+    						matAccession = value;
+    					
+    					if (keyString.substring(keyString.lastIndexOf(":")+1).equals("product"))
+    						matProduct = value;
+    				}
 
-				rel.withTx(graknTx).execute();
+    				InsertQuery mature = insert(
+    						var("mat" + cnt)
+    		        			.isa("mirnaMature")
+    		        			.has("accession", matAccession)
+    		        			.has("product", matProduct)
+    		        			.has("sequence", subSequence)
+    		        			.has("location", location));
+    				
+    				graknTx = session.transaction(GraknTxType.BATCH);
+    				
+    				mature.withTx(graknTx).execute();
 
-				cnt++;
-			}
+    				Query<?> rel = match(var("m1").isa("mirna").has("accession", accession), var("m2").isa("mirnaMature").has("accession", matAccession)).insert(var("p"+cnt).isa("precursorOf").rel("precursor", "m1").rel("mature", "m2"));
+    				rel.withTx(graknTx).execute();
 
-            if (entryCounter % 1000 == 0) {
-            	graknTx.commit();
-            	graknTx.close();
-            	
-            	graknTx = session.transaction(GraknTxType.WRITE);
+    				graknTx.commit();
+    				
+    				cnt++;
+    			}
 
-        		System.out.print(".");
-            }
+                if (counter % 1000 == 0) {
+                	System.out.print(".");
+                }
+                
+        	}));
+
+			entryCounter += entry.getFeatureSet().size();
 		}
-		System.out.println(" done");
 
-    	graknTx.commit();
-    	graknTx.close();
-    	
+        CompletableFuture<Void> allFutures =
+        CompletableFuture.
+        	allOf(listOfFutures.toArray(new CompletableFuture[listOfFutures.size()])).
+        	whenComplete((r, ex)-> executorService.shutdown());
+        
+        allFutures.get();
+        System.out.println(" done");
+
         br.close();
     }
 }
