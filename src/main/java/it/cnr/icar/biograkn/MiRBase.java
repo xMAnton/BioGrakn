@@ -21,16 +21,11 @@ package it.cnr.icar.biograkn;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.Vector;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import org.biojava.bio.BioException;
 import org.biojava.bio.seq.Feature;
@@ -49,12 +44,11 @@ import static ai.grakn.graql.Graql.*;
 
 public class MiRBase extends Importer {
 
-	static public void importer(Grakn.Session session, String fileName) throws IOException, NoSuchElementException, BioException, InterruptedException, ExecutionException {
+	static public void importer(Grakn.Session session, String fileName) throws IOException, NoSuchElementException, BioException, InterruptedException {
 		int entryCounter = 0;
 
-        ExecutorService executorService = Executors.newFixedThreadPool(8);
-        ArrayList<CompletableFuture<Void>> listOfFutures = new ArrayList<>();
-		
+        Grakn.Transaction graknTx = session.transaction(GraknTxType.BATCH);	
+        
         BufferedReader br = new BufferedReader(new FileReader(fileName)); 
 		Namespace ns = RichObjectFactory.getDefaultNamespace();
 		RichSequenceIterator seqs = RichSequence.IOTools.readEMBLRNA(br, ns);
@@ -91,72 +85,61 @@ public class MiRBase extends Importer {
 	        			.has("comment", comment)
 	        			.has("sequence", sequence));
 
-			listOfFutures.add(CompletableFuture.runAsync(() -> {
+            mirna.withTx(graknTx).execute();
 
-				Grakn.Transaction graknTx = session.transaction(GraknTxType.BATCH);				
-                mirna.withTx(graknTx).execute();
-                graknTx.commit();
+			Iterator<Feature> itf = entry.getFeatureSet().iterator();
+			
+			int cnt = 1;
+			while (itf.hasNext()) {
+				Feature f = itf.next();
+				
+				String location = f.getLocation().toString();
+				String subSequence = sequence.substring(f.getLocation().getMin()-1, f.getLocation().getMax());
+				String matAccession = "";
+				String matProduct = "";
 
-    			Iterator<Feature> itf = entry.getFeatureSet().iterator();
-    			
-    			int cnt = 1;
-    			while (itf.hasNext()) {
-    				Feature f = itf.next();
-    				
-    				String location = f.getLocation().toString();
-    				String subSequence = sequence.substring(f.getLocation().getMin()-1, f.getLocation().getMax());
-    				String matAccession = "";
-    				String matProduct = "";
+				@SuppressWarnings("unchecked")
+				Map<Object, ?> map = f.getAnnotation().asMap();
+				Set<Object> keys = map.keySet();
+				for (Object key : keys) {
+					String keyString = key.toString();
+					String value = (String) map.get(key);
+					
+					if (keyString.substring(keyString.lastIndexOf(":")+1).equals("accession"))
+						matAccession = value;
+					
+					if (keyString.substring(keyString.lastIndexOf(":")+1).equals("product"))
+						matProduct = value;
+				}
 
-    				@SuppressWarnings("unchecked")
-    				Map<Object, ?> map = f.getAnnotation().asMap();
-    				Set<Object> keys = map.keySet();
-    				for (Object key : keys) {
-    					String keyString = key.toString();
-    					String value = (String) map.get(key);
-    					
-    					if (keyString.substring(keyString.lastIndexOf(":")+1).equals("accession"))
-    						matAccession = value;
-    					
-    					if (keyString.substring(keyString.lastIndexOf(":")+1).equals("product"))
-    						matProduct = value;
-    				}
+				InsertQuery mature = insert(
+						var("mat" + cnt)
+		        			.isa("mirnaMature")
+		        			.has("accession", matAccession)
+		        			.has("product", matProduct)
+		        			.has("sequence", subSequence)
+		        			.has("location", location));
+				
+				mature.withTx(graknTx).execute();
 
-    				InsertQuery mature = insert(
-    						var("mat" + cnt)
-    		        			.isa("mirnaMature")
-    		        			.has("accession", matAccession)
-    		        			.has("product", matProduct)
-    		        			.has("sequence", subSequence)
-    		        			.has("location", location));
-    				
-    				graknTx = session.transaction(GraknTxType.BATCH);
-    				
-    				mature.withTx(graknTx).execute();
+				Query<?> rel = match(var("m1").isa("mirna").has("accession", accession), var("m2").isa("mirnaMature").has("accession", matAccession)).insert(var("p"+cnt).isa("precursorOf").rel("precursor", "m1").rel("mature", "m2"));
 
-    				Query<?> rel = match(var("m1").isa("mirna").has("accession", accession), var("m2").isa("mirnaMature").has("accession", matAccession)).insert(var("p"+cnt).isa("precursorOf").rel("precursor", "m1").rel("mature", "m2"));
-    				rel.withTx(graknTx).execute();
+				rel.withTx(graknTx).execute();
+				
+				cnt++;
+			}
 
-    				graknTx.commit();
-    				
-    				cnt++;
-    			}
-
-                if (counter % 1000 == 0) {
-                	System.out.print(".");
-                }
+            if (counter % 1000 == 0) {
+            	System.out.print(".");
+            	
+            	graknTx.commit();
+            	graknTx = session.transaction(GraknTxType.BATCH);
+            }
                 
-        	}));
-
 			entryCounter += entry.getFeatureSet().size();
 		}
 
-        CompletableFuture<Void> allFutures =
-        CompletableFuture.
-        	allOf(listOfFutures.toArray(new CompletableFuture[listOfFutures.size()])).
-        	whenComplete((r, ex)-> executorService.shutdown());
-        
-        allFutures.get();
+        graknTx.commit();
         System.out.println(" done");
 
         br.close();
