@@ -59,7 +59,7 @@ public class GeneOntology extends Importer {
          */
         int entryCounter = 0;
         
-        ExecutorService executorService = Executors.newFixedThreadPool(8);
+        ExecutorService executorService = Executors.newFixedThreadPool(4);
         ArrayList<CompletableFuture<Void>> listOfFutures = new ArrayList<>();
         
         XMLInputFactory xif = XMLInputFactory.newInstance();

@@ -54,7 +54,7 @@ public class Uniprot extends Importer {
 	static public void importer(Grakn.Session session, String fileName) throws IOException, XMLStreamException, JAXBException, NoSuchElementException, InterruptedException, ExecutionException {
 		int entryCounter = 0;
 
-        ExecutorService executorService = Executors.newFixedThreadPool(8);
+        ExecutorService executorService = Executors.newFixedThreadPool(4);
         ArrayList<CompletableFuture<Void>> listOfFutures = new ArrayList<>();
         
         XMLInputFactory xif = XMLInputFactory.newInstance();

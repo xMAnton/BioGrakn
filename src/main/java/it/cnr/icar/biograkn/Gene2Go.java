@@ -39,7 +39,7 @@ public class Gene2Go extends Importer {
 		String line;
 		int entryCounter = 0;
 
-        ExecutorService executorService = Executors.newFixedThreadPool(8);
+        ExecutorService executorService = Executors.newFixedThreadPool(4);
         ArrayList<CompletableFuture<Void>> listOfFutures = new ArrayList<>();
 
         BufferedReader reader = new BufferedReader(new FileReader(fileName));

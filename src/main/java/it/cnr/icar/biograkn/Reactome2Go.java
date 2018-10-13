@@ -40,7 +40,7 @@ public class Reactome2Go extends Importer {
 		int entryCounter = 0;
 		String line;
 
-        ExecutorService executorService = Executors.newFixedThreadPool(8);
+        ExecutorService executorService = Executors.newFixedThreadPool(4);
         ArrayList<CompletableFuture<Void>> listOfFutures = new ArrayList<>();
 
         BufferedReader reader = new BufferedReader(new FileReader(fileName));
