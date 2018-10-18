@@ -24,13 +24,8 @@ import static ai.grakn.graql.Graql.var;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
-import ai.grakn.GraknTxType;
 import ai.grakn.client.Grakn;
 import ai.grakn.graql.Query;
 
@@ -40,9 +35,6 @@ public class MiRNASNP extends Importer {
         String line;
 		int entryCounter = 0;
 
-        ExecutorService executorService = Executors.newFixedThreadPool(4);
-        ArrayList<CompletableFuture<Void>> listOfFutures = new ArrayList<>();
-        
         BufferedReader reader = new BufferedReader(new FileReader(fileName));
 
         System.out.print("Importing miRNASNP ");
@@ -77,27 +69,16 @@ public class MiRNASNP extends Importer {
 	            			var("rel").isa("snpMutation").rel("snp", "s").rel("mutated", "m")
 	        			);
 
+        	add(snp);
+        	
             entryCounter++;
-            final int cnt = entryCounter;
-            
-            listOfFutures.add(CompletableFuture.runAsync(() -> {
-                Grakn.Transaction graknTx = session.transaction(GraknTxType.BATCH);
-                snp.withTx(graknTx).execute();
-                graknTx.commit();
-                
-                if (cnt % 20 == 0) {
-                	System.out.print(".");
-                }
-        	}));
-            
+            if (entryCounter % 20 == 0) {
+            	exec(session);
+            	System.out.print(".");
+            }
         }
         
-        CompletableFuture<Void> allFutures =
-        CompletableFuture.
-        	allOf(listOfFutures.toArray(new CompletableFuture[listOfFutures.size()])).
-        	whenComplete((r, ex)-> executorService.shutdown());
-        
-        allFutures.get();
+        exec(session);
         System.out.println(" done");
         
         reader.close();

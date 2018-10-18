@@ -24,19 +24,17 @@ import static ai.grakn.graql.Graql.var;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
 
-import ai.grakn.GraknTxType;
 import ai.grakn.client.Grakn;
 import ai.grakn.graql.Query;
 
 public class MiRTarBase extends Importer {
 
-	static public void importer(Grakn.Session session, String fileName) throws IOException, InterruptedException {
+	static public void importer(Grakn.Session session, String fileName) throws IOException, InterruptedException, ExecutionException {
 		String line;
 		int entryCounter = 0;
 
-        Grakn.Transaction graknTx = session.transaction(GraknTxType.BATCH);
-        
 	    BufferedReader reader = new BufferedReader(new FileReader(fileName));
 
         System.out.print("Importing miRTarBase ");
@@ -70,18 +68,16 @@ public class MiRTarBase extends Importer {
 	        				var().isa("interactionGene").rel("interacting", "i").rel("interactingGene", "g")
 	        			);
 
+        	add(rel);
+        	
             entryCounter++;
-
-            rel.withTx(graknTx).execute();
-            
             if (entryCounter % 20000 == 0) {
-            	graknTx.commit();
+            	exec(session);
             	System.out.print(".");
-            	
-            	graknTx = session.transaction(GraknTxType.BATCH);
             }
         }
-        graknTx.commit();
+        
+        exec(session);
         System.out.println(" done");
         
         reader.close();

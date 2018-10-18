@@ -20,11 +20,7 @@ package it.cnr.icar.biograkn;
 
 import java.io.FileNotFoundException;
 import java.io.FileReader;
-import java.util.ArrayList;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -34,7 +30,6 @@ import javax.xml.stream.XMLStreamConstants;
 import javax.xml.stream.XMLStreamException;
 import javax.xml.stream.XMLStreamReader;
 
-import ai.grakn.GraknTxType;
 import ai.grakn.client.Grakn;
 import ai.grakn.graql.InsertQuery;
 
@@ -59,9 +54,6 @@ public class GeneOntology extends Importer {
          */
         int entryCounter = 0;
         
-        ExecutorService executorService = Executors.newFixedThreadPool(4);
-        ArrayList<CompletableFuture<Void>> listOfFutures = new ArrayList<>();
-        
         XMLInputFactory xif = XMLInputFactory.newInstance();
         XMLStreamReader xsr = xif.createXMLStreamReader(new FileReader(fileName));
         xsr.nextTag(); // Advance to statements element
@@ -83,9 +75,6 @@ public class GeneOntology extends Importer {
             	String goComment = (term.getComment() != null) ? term.getComment() : "";
             	String goNamespace = (term.getNamespace() != null) ? term.getNamespace() : "";
             	
-                entryCounter++;
-                final int cnt = entryCounter;
-                
 	            InsertQuery go = insert(
 	            		var("t")
 	            			.isa("go")
@@ -96,15 +85,13 @@ public class GeneOntology extends Importer {
 	            			.has("namespace", goNamespace)
 	            		);
 
-	            listOfFutures.add(CompletableFuture.runAsync(() -> {
-		
-	                Grakn.Transaction graknTx = session.transaction(GraknTxType.BATCH);
-	                go.withTx(graknTx).execute();
-	                graknTx.commit();
+	            add(go);
 	
-	                if (cnt % 2000 == 0) {
-	                	System.out.print(".");
-	                }
+                entryCounter++;
+                if (entryCounter % 2000 == 0) {
+                	exec(session);
+                	System.out.print(".");
+                }
             /*
             idVertexMap.put(goId, t);
                 
@@ -160,17 +147,10 @@ public class GeneOntology extends Importer {
             		}
         		}
         		*/
-                }));
             }
         }
             
-        CompletableFuture<Void> allFutures =
-            CompletableFuture.
-            	allOf(listOfFutures.toArray(new CompletableFuture[listOfFutures.size()])).
-            	whenComplete((r, ex)-> executorService.shutdown());
-                
-        allFutures.get();
-
+        exec(session);
         System.out.println(" done");
 
         /*

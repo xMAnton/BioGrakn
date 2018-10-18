@@ -20,12 +20,8 @@ package it.cnr.icar.biograkn;
 
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.NoSuchElementException;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 import javax.xml.bind.JAXBContext;
 import javax.xml.bind.JAXBException;
@@ -42,7 +38,6 @@ import org.uniprot.uniprot.CommentType;
 import org.uniprot.uniprot.Entry;
 import org.uniprot.uniprot.GeneType;
 
-import ai.grakn.GraknTxType;
 import ai.grakn.client.Grakn;
 import ai.grakn.graql.Query;
 import ai.grakn.graql.VarPattern;
@@ -54,9 +49,6 @@ public class Uniprot extends Importer {
 	static public void importer(Grakn.Session session, String fileName) throws IOException, XMLStreamException, JAXBException, NoSuchElementException, InterruptedException, ExecutionException {
 		int entryCounter = 0;
 
-        ExecutorService executorService = Executors.newFixedThreadPool(4);
-        ArrayList<CompletableFuture<Void>> listOfFutures = new ArrayList<>();
-        
         XMLInputFactory xif = XMLInputFactory.newInstance();
         XMLStreamReader xsr = xif.createXMLStreamReader(new FileReader(fileName));
     	xsr.next(); // Advance to statements element
@@ -158,29 +150,17 @@ public class Uniprot extends Importer {
             			);
             	}
             	
-                entryCounter++;
-                final int cnt = entryCounter;
-                final Query<?> pr = protein;
-                
-                listOfFutures.add(CompletableFuture.runAsync(() -> {
-                    Grakn.Transaction graknTx = session.transaction(GraknTxType.BATCH);
-                    pr.withTx(graknTx).execute();
-                    graknTx.commit();
-                    
-                    if (cnt % 1000 == 0) {
-                    	System.out.print(".");
-                    }
-            	}));
+            	add(protein);
             	
+                entryCounter++;
+                if (entryCounter % 1000 == 0) {
+                	exec(session);
+                	System.out.print(".");
+                }
             }
         }
         
-        CompletableFuture<Void> allFutures =
-        CompletableFuture.
-        	allOf(listOfFutures.toArray(new CompletableFuture[listOfFutures.size()])).
-        	whenComplete((r, ex)-> executorService.shutdown());
-        
-        allFutures.get();
+        exec(session);
         System.out.println(" done");
 
         xsr.close();

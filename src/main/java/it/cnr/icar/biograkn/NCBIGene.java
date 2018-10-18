@@ -21,14 +21,9 @@ package it.cnr.icar.biograkn;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashSet;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
-import ai.grakn.GraknTxType;
 import ai.grakn.client.Grakn;
 import ai.grakn.graql.InsertQuery;
 import ai.grakn.graql.VarPattern;
@@ -41,9 +36,6 @@ public class NCBIGene extends Importer {
         int entryCounter = 0;
         String line;
 
-        ExecutorService executorService = Executors.newFixedThreadPool(4);
-        ArrayList<CompletableFuture<Void>> listOfFutures = new ArrayList<>();
-        
         BufferedReader reader = new BufferedReader(new FileReader(fileName));
 
         // skip first line
@@ -55,7 +47,7 @@ public class NCBIGene extends Importer {
             String datavalue[] = line.split("\t");
 
             if (!datavalue[0].equals("9606"))
-            		continue;
+            	continue;
             
             String slists[] = datavalue[4].split("|");
             HashSet<String> symbols = new HashSet<String>(slists.length + 2);
@@ -87,26 +79,17 @@ public class NCBIGene extends Importer {
             
             InsertQuery gene = insert(g);
 
-            entryCounter++;
-            final int cnt = entryCounter;
+            add(gene);
             
-            listOfFutures.add(CompletableFuture.runAsync(() -> {
-                Grakn.Transaction graknTx = session.transaction(GraknTxType.BATCH);
-                gene.withTx(graknTx).execute();
-                graknTx.commit();
-                
-                if (cnt % 2500 == 0) {
-                	System.out.print(".");
-                }
-        	}));
+            entryCounter++;
+
+            if (entryCounter % 2500 == 0) {
+            	exec(session);
+            	System.out.print(".");
+            }
         }
         
-        CompletableFuture<Void> allFutures =
-        CompletableFuture.
-        	allOf(listOfFutures.toArray(new CompletableFuture[listOfFutures.size()])).
-        	whenComplete((r, ex)-> executorService.shutdown());
-        
-        allFutures.get();
+        exec(session);
         System.out.println(" done");
         
         reader.close();

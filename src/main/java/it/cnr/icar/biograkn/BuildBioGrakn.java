@@ -4,7 +4,6 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.InputStream;
 import java.io.InputStreamReader;
-import java.lang.reflect.Method;
 import java.util.LinkedHashMap;
 
 import org.apache.commons.cli.CommandLine;
@@ -102,11 +101,18 @@ public class BuildBioGrakn {
 		long startTime = System.currentTimeMillis();
 				
 		// run import modules
-		for (String moduleName : sourcesModules.keySet()) {
-			Class<?> c = Class.forName("it.cnr.icar.biograkn." + moduleName);
-			Method m = c.getDeclaredMethod("importer", Grakn.Session.class, String.class);
-			m.invoke(null, session, sourcesModules.get(moduleName));
-		}
+		NCBIGene.importer(session, sourcesModules.get("NCBIGene"));
+		GeneOntology.importer(session, sourcesModules.get("GeneOntology"));
+		Gene2Go.importer(session, sourcesModules.get("Gene2Go"));
+		MiRBase.importer(session, sourcesModules.get("MiRBase"));
+		Reactome.importer(session, sourcesModules.get("Reactome"));
+		Reactome2Go.importer(session, sourcesModules.get("Reactome2Go"));
+		Reactome2Mirna.importer(session, sourcesModules.get("Reactome2Mirna"));
+		MiRCancer.importer(session, sourcesModules.get("MiRCancer"));
+		Uniprot.importer(session, sourcesModules.get("Uniprot"));
+		Uniprot2Reactome.importer(session, sourcesModules.get("Uniprot2Reactome"));
+		MiRNASNP.importer(session, sourcesModules.get("MiRNASNP"));
+		MiRTarBase.importer(session, sourcesModules.get("MiRTarBase"));
 		
 		session.close();
 		
@@ -124,6 +130,6 @@ public class BuildBioGrakn {
 	    long hours = minutes / MINUTES_IN_AN_HOUR;
 	    minutes -= hours * MINUTES_IN_AN_HOUR;
 
-	    return hours + " hours " + minutes + " minutes " + seconds + " seconds";
+	    return hours + " hour(s), " + minutes + " minutes and " + seconds + " seconds";
 	}
 }

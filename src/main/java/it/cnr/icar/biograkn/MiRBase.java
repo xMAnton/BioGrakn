@@ -21,11 +21,13 @@ package it.cnr.icar.biograkn;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.Vector;
+import java.util.concurrent.ExecutionException;
 
 import org.biojava.bio.BioException;
 import org.biojava.bio.seq.Feature;
@@ -35,20 +37,17 @@ import org.biojavax.RichObjectFactory;
 import org.biojavax.bio.seq.RichSequence;
 import org.biojavax.bio.seq.RichSequenceIterator;
 
-import ai.grakn.GraknTxType;
 import ai.grakn.client.Grakn;
 import ai.grakn.graql.InsertQuery;
-import ai.grakn.graql.Query;
+import ai.grakn.graql.VarPattern;
 
 import static ai.grakn.graql.Graql.*;
 
 public class MiRBase extends Importer {
 
-	static public void importer(Grakn.Session session, String fileName) throws IOException, NoSuchElementException, BioException, InterruptedException {
+	static public void importer(Grakn.Session session, String fileName) throws IOException, NoSuchElementException, BioException, InterruptedException, ExecutionException {
 		int entryCounter = 0;
 
-        Grakn.Transaction graknTx = session.transaction(GraknTxType.BATCH);	
-        
         BufferedReader br = new BufferedReader(new FileReader(fileName)); 
 		Namespace ns = RichObjectFactory.getDefaultNamespace();
 		RichSequenceIterator seqs = RichSequence.IOTools.readEMBLRNA(br, ns);
@@ -74,8 +73,8 @@ public class MiRBase extends Importer {
 			String sequence = entry.getInternalSymbolList().seqString();
 			
             entryCounter++;
-            final int counter = entryCounter;
 
+            /*
             InsertQuery mirna = insert(
 					var("m")
 					.isa("mirna")
@@ -85,9 +84,21 @@ public class MiRBase extends Importer {
 	        			.has("comment", comment)
 	        			.has("sequence", sequence));
 
-            mirna.withTx(graknTx).execute();
+            add(mirna);
+            */
+            ArrayList<VarPattern> patterns = new ArrayList<VarPattern>();
+            
+            VarPattern m = var("m")
+					.isa("mirna")
+        			.has("accession", accession)
+        			.has("name", name)
+        			.has("description", description)
+        			.has("comment", comment)
+        			.has("sequence", sequence);
 
-			Iterator<Feature> itf = entry.getFeatureSet().iterator();
+            patterns.add(m);
+            
+            Iterator<Feature> itf = entry.getFeatureSet().iterator();
 			
 			int cnt = 1;
 			while (itf.hasNext()) {
@@ -112,6 +123,7 @@ public class MiRBase extends Importer {
 						matProduct = value;
 				}
 
+				/*
 				InsertQuery mature = insert(
 						var("mat" + cnt)
 		        			.isa("mirnaMature")
@@ -120,26 +132,44 @@ public class MiRBase extends Importer {
 		        			.has("sequence", subSequence)
 		        			.has("location", location));
 				
-				mature.withTx(graknTx).execute();
-
 				Query<?> rel = match(var("m1").isa("mirna").has("accession", accession), var("m2").isa("mirnaMature").has("accession", matAccession)).insert(var("p"+cnt).isa("precursorOf").rel("precursor", "m1").rel("mature", "m2"));
-
-				rel.withTx(graknTx).execute();
+				*/
+				
+				VarPattern mat = var("mat" + cnt)
+	        			.isa("mirnaMature")
+	        			.has("accession", matAccession)
+	        			.has("product", matProduct)
+	        			.has("sequence", subSequence)
+	        			.has("location", location);
+				
+				VarPattern r = var("r"+cnt)
+						.isa("precursorOf")
+						.rel("precursor", "m").rel("mature", "mat" + cnt);
+				
+				patterns.add(mat);
+				patterns.add(r);
+				
+				//add(mature);
+				//add(rel);
 				
 				cnt++;
 			}
-
-            if (counter % 1000 == 0) {
-            	System.out.print(".");
-            	
-            	graknTx.commit();
-            	graknTx = session.transaction(GraknTxType.BATCH);
-            }
-                
+			
 			entryCounter += entry.getFeatureSet().size();
+
+			InsertQuery mirna = insert(
+				patterns.toArray(new VarPattern[patterns.size()])
+			);
+			
+			add(mirna);
+			
+            if (entryCounter % 2000 == 0) {
+            	exec(session);
+            	System.out.print(".");
+            }               
 		}
 
-        graknTx.commit();
+        exec(session);
         System.out.println(" done");
 
         br.close();
